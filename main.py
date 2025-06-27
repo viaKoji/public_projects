@@ -52,14 +52,18 @@ def main():
             logging.info("🔍 Searching LinkedIn emails from Gmail (primary source)...")
             gmail_jobs = gmail_scraper.scrape_jobs(max_emails=25, scrape_descriptions=True)
             
-            # Add Gmail jobs to database
+            # Add Gmail jobs to database WITH VALIDATION
             gmail_new_jobs = 0
             for job in gmail_jobs:
-                # Only add jobs with URLs
+                # Only add jobs with URLs AND that pass validation
                 if job.get('url'):
-                    if db_manager.add_job(job):
-                        gmail_new_jobs += 1
-                        all_new_jobs.append(job)
+                    # FIXED: Validate job before adding to database
+                    if gmail_scraper._is_valid_job(job):
+                        if db_manager.add_job(job):
+                            gmail_new_jobs += 1
+                            all_new_jobs.append(job)
+                    else:
+                        logging.debug(f"Skipping invalid job: {job.get('title', 'Unknown')}")
                 else:
                     logging.debug(f"Skipping job without URL: {job.get('title', 'Unknown')}")
             
