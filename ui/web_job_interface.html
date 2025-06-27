@@ -1,0 +1,3083 @@
+<!--
+Version 3.0 - Enhanced Source Filtering & Multi-Source Diagnostics
+Previous: v2.9 - Complete Interface with Score Source Indicators
+Changes in v3.0:
+- Added comprehensive source analysis section showing status of all job sources
+- Enhanced source filter dropdown with job counts per source  
+- Added source diagnostics modal with health checks and recommendations
+- Improved source badges on job cards with better visual indicators
+- Added "Run Source Diagnostics" functionality to identify broken scrapers
+- Enhanced job filtering information display
+- Added sort functionality (by score, date, company, title)
+- All existing functionality preserved (resume management, profile, rating system)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 AI Job Matcher</title>
+    <style>
+        /* 
+        CSS-Only Dark Theme for Job Interface
+        Replace only the <style> section in your existing web_job_interface.html
+        Keep ALL JavaScript exactly as-is!
+        */
+
+        :root {
+            /* Premium Dark Color Scheme */
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-blue-hover: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --border: #334155;
+            --border-light: #475569;
+            --shadow: rgba(0, 0, 0, 0.3);
+            --status-new: #8b5cf6;
+            --status-unrated: #6b7280;
+            --status-promising: #3b82f6;
+            --status-applied: #10b981;
+            --status-uninterested: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Styling */
+        .header {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 24px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--border-light);
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-blue);
+        }
+
+        .stat-value {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            display: block;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-top: 4px;
+        }
+
+        /* Score Legend */
+        .score-legend {
+            background: var(--bg-tertiary);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-light);
+        }
+
+        .score-legend h4 {
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .score-legend-items {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .score-legend-items span {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Source Analysis Section */
+        .source-analysis {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .source-analysis h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .source-analysis p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .source-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .source-card {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .source-card:hover {
+            border-color: var(--border-light);
+            transform: translateY(-1px);
+        }
+
+        .source-card.working {
+            border-color: var(--success);
+            background: linear-gradient(135deg, var(--bg-primary), rgba(16, 185, 129, 0.05));
+        }
+
+        .source-card.broken {
+            border-color: var(--error);
+            background: linear-gradient(135deg, var(--bg-primary), rgba(239, 68, 68, 0.05));
+        }
+
+        .source-card.partial {
+            border-color: var(--warning);
+            background: linear-gradient(135deg, var(--bg-primary), rgba(245, 158, 11, 0.05));
+        }
+
+        .source-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary);
+        }
+
+        .source-stats {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .source-status {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: white;
+            display: inline-block;
+            font-weight: 600;
+        }
+
+        .status-working { background: var(--success); }
+        .status-broken { background: var(--error); }
+        .status-partial { background: var(--warning); }
+
+        /* Controls Section */
+        .controls {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .controls-row:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Button Styling */
+        .btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: var(--accent-blue-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-light);
+            border-color: var(--text-muted);
+        }
+
+        .btn-danger {
+            background: var(--error);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        /* Filter Controls */
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-width: 160px;
+            font-size: 0.875rem;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        /* Filter Info */
+        .filter-info {
+            background: var(--bg-tertiary);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            display: none;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+
+        .filter-info.active {
+            display: block;
+        }
+
+        /* Job Cards */
+        .jobs-container {
+            display: grid;
+            gap: 24px;
+        }
+
+        .job-card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .job-card:hover {
+            border-color: var(--border-light);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .job-title {
+            font-size: 1.375rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+
+        .job-company {
+            font-size: 1.125rem;
+            color: var(--accent-blue);
+            font-weight: 500;
+        }
+
+        /* Source Badges */
+        .source-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin: 8px 8px 0 0;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+
+        .source-gmail_linkedin {
+            background: linear-gradient(135deg, #0077b5, #005885);
+            color: white;
+            border-color: #0077b5;
+        }
+
+        .source-simplyhired {
+            background: linear-gradient(135deg, #6a5acd, #483d8b);
+            color: white;
+            border-color: #6a5acd;
+        }
+
+        .source-indeed {
+            background: linear-gradient(135deg, #2164f3, #1c54e0);
+            color: white;
+            border-color: #2164f3;
+        }
+
+        .source-themuse {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            border-color: #ff6b6b;
+        }
+
+        .source-usajobs {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            border-color: #2c3e50;
+        }
+
+        .source-unknown {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border-color: var(--border-light);
+        }
+
+        /* Compatibility Score */
+        .compatibility-score {
+            text-align: center;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 600;
+            min-width: 120px;
+            border: 1px solid;
+        }
+
+        .score-high {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border-color: var(--success);
+        }
+
+        .score-medium {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border-color: var(--warning);
+        }
+
+        .score-low {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border-color: var(--error);
+        }
+
+        /* Job Details Grid */
+        .job-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .detail-group {
+            background: var(--bg-primary);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: var(--accent-blue);
+            margin-bottom: 4px;
+            font-size: 0.875rem;
+        }
+
+        .detail-value {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* AI Analysis */
+        .ai-analysis {
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid var(--border);
+        }
+
+        .ai-analysis h4 {
+            color: var(--accent-blue);
+            margin-bottom: 16px;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .ai-highlights {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .highlight-box {
+            background: var(--bg-secondary);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .highlight-box strong {
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        /* Description Box */
+        .description-box {
+            background: var(--bg-primary);
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .description-box strong {
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        /* Rating Section */
+        .rating-section {
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .rating-section h4 {
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .star-rating {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .star-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+            min-width: 80px;
+        }
+
+        .star-btn:hover {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+            transform: translateY(-1px);
+        }
+
+        .notes-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 12px 0;
+            resize: vertical;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .notes-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .notes-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Rated State */
+        .rated {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            text-align: center;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 500;
+            border: 1px solid var(--success);
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+        }
+
+        /* Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+
+        .modal-content.large {
+            max-width: 900px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-header h2 {
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+
+        /* Form Styling */
+        .profile-form {
+            display: grid;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Diagnostic Styles */
+        .diagnostic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .diagnostic-item {
+            background: var(--bg-primary);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .diagnostic-item.error {
+            border-color: var(--error);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .diagnostic-item.warning {
+            border-color: var(--warning);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .diagnostic-item.success {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .diagnostic-item h4 {
+            margin: 0 0 12px 0;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .diagnostic-item p {
+            margin: 6px 0;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Resume Analysis Styling */
+        .resume-analysis {
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            border: 1px solid var(--border);
+        }
+
+        .resume-analysis h4 {
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .resume-analysis p {
+            color: var(--text-secondary);
+            margin: 5px 0;
+        }
+
+        /* Resume Match Analysis - Fix for white background issue */
+        .resume-match-analysis,
+        div[style*="background: #f0f8ff"],
+        div[style*="background: rgba(255,255,255,0.7)"] {
+            background: var(--bg-primary) !important;
+            color: var(--text-secondary) !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        .resume-match-analysis h4,
+        div[style*="background: #f0f8ff"] h4 {
+            color: var(--accent-blue) !important;
+        }
+
+        .resume-match-analysis strong,
+        div[style*="background: #f0f8ff"] strong {
+            color: var(--text-primary) !important;
+        }
+
+        /* Fix for resume match grid items */
+        div[style*="background: rgba(255,255,255,0.7)"] {
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        div[style*="background: rgba(255,255,255,0.7)"] strong {
+            color: var(--text-primary) !important;
+        }
+
+        /* Toggle Sections */
+        .toggle-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--bg-primary);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .toggle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .toggle-content {
+            margin-top: 15px;
+            display: none;
+        }
+
+        .toggle-content.active {
+            display: block;
+        }
+
+        /* Alert Styles */
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.875rem;
+            }
+
+            .job-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .compatibility-score {
+                align-self: flex-start;
+            }
+
+            .star-rating {
+                flex-wrap: wrap;
+            }
+
+            .controls-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+
+            .filter-select {
+                width: 100%;
+            }
+
+            .source-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mt-4 { margin-top: 16px; }
+        .font-mono { 
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace; 
+        }
+        .text-sm { font-size: 0.875rem; }
+        .font-medium { font-weight: 500; }
+        .font-semibold { font-weight: 600; }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+          /* NEW: Status Statistics Grid */
+        .status-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .status-stat-card {
+            background: var(--bg-primary);
+            padding: 16px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .status-stat-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .status-stat-card.active {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎯 AI Job Matcher & Reviewer</h1>
+            <p>Intelligent job matching with AI-powered recommendations</p>
+
+            <div class="status-stats-grid" id="statusStatsGrid">
+                <div class="loading" style="color: #666; grid-column: 1 / -1;">Loading status statistics...</div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalJobs">0</div>
+                    <div>Total Jobs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="reviewedJobs">0</div>
+                    <div>Promising</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgRating">0.0</div>
+                    <div>Avg Rating</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="activeSources">0</div>
+                    <div>Active Sources</div>
+                </div>
+            </div>
+            
+            <!-- Score Source Legend -->
+            <div class="score-legend">
+                <h4>📊 Score Source Legend:</h4>
+                <div class="score-legend-items">
+                    <span>🤖 AI Analysis (Full OpenAI)</span>
+                    <span>🧠 Learned Pattern (From your ratings)</span>
+                    <span>📋 Rule Based (Simple matching)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW: Enhanced Source Analysis Section -->
+        <div class="source-analysis">
+            <h2>📊 Multi-Source Analysis</h2>
+            <p>Real-time status of your job sources - shows which scrapers are working vs broken</p>
+            
+            <div class="source-grid" id="sourceAnalysisGrid">
+                <!-- Source cards will be populated here -->
+                <div class="loading" style="color: #666; grid-column: 1 / -1;">Loading source analysis...</div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-warning" onclick="runSourceDiagnostics()">🔧 Run Source Diagnostics</button>
+                <button class="btn btn-secondary" onclick="fixBrokenSources()">🛠️ Fix Broken Sources</button>
+            </div>
+        </div>
+
+        <!-- Enhanced Controls -->
+        <div class="controls">
+            <div class="controls-row">
+                <button class="btn btn-primary" onclick="loadJobs()">🔄 Load Jobs</button>
+                <button class="btn btn-secondary" onclick="runJobSearch()">🔍 Search New Jobs</button>
+                <button class="btn btn-warning" onclick="forceReanalyzeJobs()">🤖 Force Re-analyze All</button>
+                <button class="btn" onclick="showResumeManager()">📄 Manage Resumes</button>
+                <button class="btn" onclick="parseAllSalaries()">💰 Parse Salaries</button>
+                <button class="btn" onclick="analyzeJobSources()">📊 Analyze Sources</button>
+                <button class="btn" onclick="validateUrls()">🔗 Check URLs</button>
+                <button class="btn" onclick="showProfile()">⚙️ Edit Profile</button>
+                <a href="ai_configuration.html" class="btn" style="background: linear-gradient(135deg, #9b59b6, #8e44ad);">🤖 AI Configuration</a>
+            </div>
+            
+            <!-- NEW: Enhanced filter controls -->
+            <div class="controls-row">
+                <div class="filter-group">
+                    <label class="filter-label">Filter by Status:</label>
+                    <select class="filter-select" id="statusFilter" onchange="filterJobs()">
+                        <option value="all">All Statuses</option>
+                        <option value="new">🆕 New (Last 24h)</option>
+                        <option value="unrated">❓ Unrated (Need Review)</option>
+                        <option value="promising">✅ Promising (Rated 4-5★)</option>
+                        <option value="applied">🎯 Applied</option>
+                        <option value="uninterested">❌ Uninterested (Rated 1-3★)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Filter by Source:</label>
+                    <select class="filter-select" id="sourceFilter" onchange="filterJobs()">
+                        <option value="all">All Sources (Loading...)</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Number of Jobs:</label>
+                    <select class="filter-select" id="jobLimit">
+                        <option value="10">10 Jobs</option>
+                        <option value="20" selected>20 Jobs</option>
+                        <option value="50">50 Jobs</option>
+                        <option value="100">100 Jobs</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Sort by:</label>
+                    <select class="filter-select" id="sortBy" onchange="sortJobs()">
+                        <option value="score">Compatibility Score</option>
+                        <option value="date">Date Found</option>
+                        <option value="company">Company Name</option>
+                        <option value="title">Job Title</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- NEW: Filter Information Display -->
+            <div class="filter-info" id="filterInfo">
+                <strong>Current Filter:</strong> <span id="currentFilter">All Sources</span> | 
+                <strong>Showing:</strong> <span id="jobCount">0</span> jobs | 
+                <strong>Sort:</strong> <span id="currentSort">Compatibility Score</span>
+            </div>
+        </div>
+
+        <!-- Jobs Container -->
+        <div id="jobsContainer" class="jobs-container">
+            <div class="loading">
+                🤖 Welcome! Click "Load Jobs" to get started with AI-powered job recommendations.
+            </div>
+        </div>
+
+        <!-- Resume Management Modal -->
+        <div id="resumeModal" class="modal">
+            <div class="modal-content" style="max-width: 800px;">
+                <div class="modal-header">
+                    <h2>📄 Resume Management</h2>
+                    <button class="close-btn" onclick="closeResumeManager()">&times;</button>
+                </div>
+                <div id="resumeManagerContent">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Modal -->
+        <div id="profileModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>⚙️ Edit Profile</h2>
+                    <button class="close-btn" onclick="closeProfile()">&times;</button>
+                </div>
+                <div class="profile-form">
+                    <div class="form-group">
+                        <label>Current Role:</label>
+                        <input type="text" id="currentRole" placeholder="e.g., Senior Product Manager">
+                    </div>
+                    <div class="form-group">
+                        <label>Years of Experience:</label>
+                        <input type="number" id="experienceYears" min="0" max="50">
+                    </div>
+                    <div class="form-group">
+                        <label>Minimum Salary:</label>
+                        <input type="number" id="salaryMin" step="5000" placeholder="140000">
+                    </div>
+                    <div class="form-group">
+                        <label>Maximum Salary:</label>
+                        <input type="number" id="salaryMax" step="5000" placeholder="200000">
+                    </div>
+                    <div class="form-group">
+                        <label>Skills (comma-separated):</label>
+                        <textarea id="skills" rows="4" placeholder="Product Management, Strategy, Analytics..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Preferred Locations (comma-separated):</label>
+                        <textarea id="locations" rows="3" placeholder="Seattle WA, Remote, San Francisco CA..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Preferred Companies (comma-separated):</label>
+                        <textarea id="companies" rows="3" placeholder="Microsoft, Amazon, Google..."></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveProfile()">💾 Save Profile</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW: Source Diagnostics Modal -->
+        <div id="diagnosticsModal" class="modal">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h2>🔧 Multi-Source Diagnostics</h2>
+                    <button class="close-btn" onclick="closeDiagnostics()">&times;</button>
+                </div>
+                <div id="diagnosticsContent">
+                    <!-- Diagnostic results will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let allJobs = [];
+        let currentJobs = [];
+        let ratedJobs = new Set();
+        let userProfile = {};
+        let sourceStats = {}; // NEW: Track source statistics
+        let statusStats = {};
+        let currentStatusFilter = 'all';
+        
+        // API Configuration
+        const API_BASE = 'http://localhost:5000/api';
+        
+
+        // NEW: Load status statistics
+        async function updateStatusStatistics() {
+            try {
+                const response = await apiCall('/status/statistics');
+                const stats = response.statistics;
+                
+                statusStats = stats.by_status || {};
+                renderStatusStatistics(stats);
+                
+            } catch (error) {
+                console.error('Failed to load status statistics:', error);
+            }
+        }
+
+        // NEW: Render status statistics grid (add this HTML above your existing stats)
+        function renderStatusStatistics(stats) {
+            const grid = document.getElementById('statusStatsGrid');
+            if (!grid) return; // Skip if element doesn't exist yet
+            
+            const statusConfig = {
+                'new': { label: 'New', emoji: '🆕', description: 'Last 24 hours' },
+                'unrated': { label: 'Unrated', emoji: '❓', description: 'Need review' },
+                'promising': { label: 'Promising', emoji: '✅', description: 'Rated 4-5★' },
+                'applied': { label: 'Applied', emoji: '🎯', description: 'Applied to' },
+                'uninterested': { label: 'Uninterested', emoji: '❌', description: 'Rated 1-3★' }
+            };
+            
+            let html = '';
+            
+            for (const [status, config] of Object.entries(statusConfig)) {
+                const count = stats.by_status[status] || 0;
+                
+                html += `
+                    <div class="status-stat-card" data-status="${status}" onclick="filterByStatus('${status}')" 
+                        style="background: var(--bg-primary); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s ease;">
+                        <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 4px;">${count}</div>
+                        <div style="font-size: 0.875rem; color: var(--text-secondary);">${config.emoji} ${config.label}</div>
+                    </div>
+                `;
+            }
+            
+            grid.innerHTML = html;
+        }
+
+        // NEW: Filter by status when clicking on status stat card
+        function filterByStatus(status) {
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter) {
+                statusFilter.value = status;
+                currentStatusFilter = status;
+                loadJobs();
+            }
+        }
+
+        // NEW: Update job status via API
+        async function updateJobStatus(jobId, newStatus) {
+            try {
+                const response = await apiCall(`/jobs/${jobId}/status`, {
+                    method: 'POST',
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                if (response.success) {
+                    // Show success message
+                    alert(`✅ Job status updated to "${newStatus}"!`);
+                    
+                    // Refresh the job list to show updated status
+                    await loadJobs();
+                    await updateStatusStatistics();
+                }
+                
+            } catch (error) {
+                alert(`Failed to update job status: ${error.message}`);
+            }
+        }
+
+        // NEW: Rate job with automatic status assignment
+        async function rateJobWithStatus(jobId, rating) {
+            try {
+                const notesElement = document.getElementById(`notes_${jobId}`);
+                const notes = notesElement ? notesElement.value : '';
+                
+                const response = await apiCall(`/jobs/${jobId}/rate`, {
+                    method: 'POST',
+                    body: JSON.stringify({ rating, notes })
+                });
+                
+                if (response.success) {
+                    // Show success message with status info
+                    alert(`✅ Job rated ${rating}/5 stars and status set to "${response.status}"!`);
+                    
+                    // Add to rated jobs set
+                    ratedJobs.add(jobId);
+                    
+                    // Refresh the job list and stats
+                    await loadJobs();
+                    await updateStatusStatistics();
+                    await updateStats();
+                }
+                
+            } catch (error) {
+                alert(`Failed to rate job: ${error.message}`);
+            }
+        }
+
+        // MODIFIED: Enhanced loadJobs function with status filtering
+        async function loadJobsWithStatus() {
+            try {
+                document.getElementById('jobsContainer').innerHTML = '<div class="loading">🎯 Loading jobs with status filtering...</div>';
+                
+                const limit = parseInt(document.getElementById('jobLimit').value);
+                const source = document.getElementById('sourceFilter').value;
+                const status = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : 'all';
+                const sort = document.getElementById('sortBy').value;
+                
+                currentStatusFilter = status;
+                
+                let url = `/jobs?limit=${limit}`;
+                if (source && source !== 'all') {
+                    url += `&source=${encodeURIComponent(source)}`;
+                }
+                if (status && status !== 'all') {
+                    url += `&status=${encodeURIComponent(status)}`;
+                }
+                if (sort) {
+                    url += `&sort=${encodeURIComponent(sort)}`;
+                }
+                
+                console.log('Loading jobs from:', API_BASE + url);
+                const response = await apiCall(url);
+                console.log('API Response:', response);
+                
+                allJobs = response.jobs;
+                currentJobs = [...allJobs];
+                
+                console.log('Jobs loaded:', allJobs.length);
+                
+                renderJobsWithStatus();
+                await updateStatusStatistics();
+                await updateStats();
+                await populateSourceFilter();
+                updateFilterInfo();
+                
+            } catch (error) {
+                document.getElementById('jobsContainer').innerHTML = `
+                    <div class="loading" style="color: #e74c3c;">
+                        ❌ Failed to load jobs: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // MODIFIED: Enhanced createJobCard with status badges and actions
+        function createJobCardWithStatus(job) {
+            const score = job.compatibility_score || 0;
+            const scoreClass = score >= 70 ? 'score-high' : score >= 50 ? 'score-medium' : 'score-low';
+            const scoreEmoji = score >= 70 ? '🟢' : score >= 50 ? '🟡' : '🔴';
+            
+            // Get job status
+            const status = job.status || 'unrated';
+            const rating = job.rating;
+            
+            // Status badge
+            let statusEmoji = '❓';
+            let statusText = status.toUpperCase();
+            let statusColor = '#6b7280';
+            
+            switch(status) {
+                case 'new': statusEmoji = '🆕'; statusColor = '#8b5cf6'; break;
+                case 'unrated': statusEmoji = '❓'; statusColor = '#6b7280'; break;
+                case 'promising': statusEmoji = '✅'; statusColor = '#3b82f6'; break;
+                case 'applied': statusEmoji = '🎯'; statusColor = '#10b981'; break;
+                case 'uninterested': statusEmoji = '❌'; statusColor = '#ef4444'; break;
+            }
+            
+            // Rating display
+            let ratingDisplay = '';
+            if (rating) {
+                const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+                ratingDisplay = `<div style="margin-top: 8px; font-size: 0.9em;">Rating: ${stars} (${rating}/5)</div>`;
+                if (job.rating_notes) {
+                    ratingDisplay += `<div style="font-size: 0.8em; color: #94a3b8; margin-top: 4px;">"${job.rating_notes}"</div>`;
+                }
+            }
+            
+            // Status action buttons
+            const statusActions = `
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0;">
+                    <button onclick="updateJobStatus('${job.job_id}', 'promising')" 
+                            style="padding: 6px 12px; border: 1px solid #3b82f6; border-radius: 6px; background: var(--bg-tertiary); color: #3b82f6; font-size: 0.75rem; cursor: pointer; ${status === 'promising' ? 'opacity: 0.5;' : ''}"
+                            ${status === 'promising' ? 'disabled' : ''}>
+                        ✅ Mark Promising
+                    </button>
+                    <button onclick="updateJobStatus('${job.job_id}', 'applied')" 
+                            style="padding: 6px 12px; border: 1px solid #10b981; border-radius: 6px; background: var(--bg-tertiary); color: #10b981; font-size: 0.75rem; cursor: pointer; ${status === 'applied' ? 'opacity: 0.5;' : ''}"
+                            ${status === 'applied' ? 'disabled' : ''}>
+                        🎯 Mark Applied
+                    </button>
+                    <button onclick="updateJobStatus('${job.job_id}', 'uninterested')" 
+                            style="padding: 6px 12px; border: 1px solid #ef4444; border-radius: 6px; background: var(--bg-tertiary); color: #ef4444; font-size: 0.75rem; cursor: pointer; ${status === 'uninterested' ? 'opacity: 0.5;' : ''}"
+                            ${status === 'uninterested' ? 'disabled' : ''}>
+                        ❌ Not Interested
+                    </button>
+                </div>
+            `;
+            
+            // Use your existing createJobCard function and modify the header section:
+            const originalCard = createJobCard(job); // Your existing function
+            
+            // Insert status badge and actions into the job header
+            const statusBadge = `
+                <div style="margin-top: 8px;">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: ${statusColor}; color: white;">
+                        ${statusEmoji} ${statusText}
+                    </span>
+                </div>
+                ${ratingDisplay}
+            `;
+            
+            // Insert status actions before the rating section
+            const cardWithStatus = originalCard.replace(
+                /<div class="rating-section">/,
+                statusActions + '<div class="rating-section">'
+            );
+            
+            // Insert status badge after company name
+            return cardWithStatus.replace(
+                /(<div class="job-company">.*?<\/div>)/,
+                '$1' + statusBadge
+            );
+        }
+
+        // MODIFIED: Enhanced renderJobs to use status-aware job cards
+        function renderJobsWithStatus() {
+            const container = document.getElementById('jobsContainer');
+            const limit = parseInt(document.getElementById('jobLimit').value);
+            const jobsToShow = currentJobs.slice(0, limit);
+            
+            if (jobsToShow.length === 0) {
+                container.innerHTML = '<div class="loading">No jobs found with current filters. Try adjusting your status or source filters.</div>';
+                return;
+            }
+
+            container.innerHTML = jobsToShow.map(job => createJobCardWithStatus(job)).join('');
+            updateFilterInfo();
+        }
+
+        // MODIFIED: Enhanced init function
+        async function initWithStatus() {
+            try {
+                await loadProfile();
+                await updateStatusStatistics(); // NEW: Load status stats
+                await updateStats();
+                await populateSourceFilter();
+                
+                // Check API health
+                const health = await apiCall('/health');
+                console.log('API Health:', health);
+                
+            } catch (error) {
+                document.getElementById('jobsContainer').innerHTML = `
+                    <div class="loading" style="color: #e74c3c;">
+                        ❌ Cannot connect to API server. Please make sure the Flask server is running on port 5000.
+                    </div>
+                `;
+            }
+        }
+
+        // NEW: Update filter information display
+        function updateFilterInfo() {
+            const statusFilter = document.getElementById('statusFilter');
+            const sourceFilter = document.getElementById('sourceFilter');
+            const sortBy = document.getElementById('sortBy');
+            const filterInfo = document.getElementById('filterInfo');
+            
+            if (statusFilter && sourceFilter && sortBy && filterInfo) {
+                document.getElementById('currentFilter').textContent = statusFilter.options[statusFilter.selectedIndex].text;
+                document.getElementById('jobCount').textContent = currentJobs.length;
+                document.getElementById('currentSort').textContent = sortBy.options[sortBy.selectedIndex].text;
+                filterInfo.style.display = 'block';
+            }
+        }
+
+        // Enhanced filterJobs function
+        function filterJobs() {
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter) {
+                currentStatusFilter = statusFilter.value;
+            }
+            loadJobs(); // This will use the new loadJobsWithStatus function
+        }
+
+        // API helper functions
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'API request failed');
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                alert(`Error: ${error.message}`);
+                throw error;
+            }
+        }
+
+        // Initialize the app
+        async function init() {
+            try {
+                await loadProfile();
+                await updateStats();
+                await populateSourceFilter();
+                await analyzeJobSources(); // NEW: Load source analysis on startup
+                
+                // Check API health
+                const health = await apiCall('/health');
+                console.log('API Health:', health);
+                
+                if (!health.components.ai_matcher || health.components.ai_matcher === 'unavailable') {
+                    document.body.insertAdjacentHTML('afterbegin', `
+                        <div style="background: #f39c12; color: white; padding: 10px; text-align: center;">
+                            ⚠️ AI Matcher unavailable. Check your OpenAI API key in settings.
+                        </div>
+                    `);
+                }
+                
+            } catch (error) {
+                document.getElementById('jobsContainer').innerHTML = `
+                    <div class="loading" style="color: #e74c3c;">
+                        ❌ Cannot connect to API server. Please make sure the Flask server is running on port 5000.
+                        <br><br>
+                        Run: <code>python api/web_api.py</code>
+                    </div>
+                `;
+            }
+        }
+
+        // Load jobs from API
+        async function loadJobs() {
+            try {
+                document.getElementById('jobsContainer').innerHTML = '<div class="loading">🎯 Loading jobs with status filtering...</div>';
+                
+                const limit = parseInt(document.getElementById('jobLimit').value);
+                const source = document.getElementById('sourceFilter').value;
+                const status = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : 'all';
+                const sort = document.getElementById('sortBy').value;
+                
+                currentStatusFilter = status;
+                
+                let url = `/jobs?limit=${limit}`;
+                if (source && source !== 'all') {
+                    url += `&source=${encodeURIComponent(source)}`;
+                }
+                if (status && status !== 'all') {
+                    url += `&status=${encodeURIComponent(status)}`;
+                }
+                if (sort) {
+                    url += `&sort=${encodeURIComponent(sort)}`;
+                }
+                
+                console.log('Loading jobs from:', API_BASE + url);
+                const response = await apiCall(url);
+                console.log('API Response:', response);
+                
+                allJobs = response.jobs;
+                currentJobs = [...allJobs];
+                
+                console.log('Jobs loaded:', allJobs.length);
+                
+                renderJobsWithStatus();
+                await updateStatusStatistics();
+                await updateStats();
+                await populateSourceFilter();
+                await analyzeJobSources();
+                updateFilterInfo();
+                
+            } catch (error) {
+                document.getElementById('jobsContainer').innerHTML = `
+                    <div class="loading" style="color: #e74c3c;">
+                        ❌ Failed to load jobs: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // NEW: Enhanced source analysis
+        async function analyzeJobSources() {
+            try {
+                const stats = await apiCall('/stats');
+                const bySource = stats.database.by_source || {};
+                
+                // Store source stats for use in other functions
+                sourceStats = bySource;
+                
+                // Get source diagnostics if available
+                let diagnostics = {};
+                try {
+                    const diagResponse = await apiCall('/debug/sources');
+                    diagnostics = diagResponse.analysis || {};
+                } catch (e) {
+                    console.warn('Could not get detailed source diagnostics:', e);
+                }
+                
+                renderSourceAnalysis(bySource, diagnostics);
+                
+            } catch (error) {
+                console.error('Failed to analyze sources:', error);
+                // Show basic source analysis even if detailed diagnostics fail
+                const grid = document.getElementById('sourceAnalysisGrid');
+                grid.innerHTML = `
+                    <div class="diagnostic-item error" style="grid-column: 1 / -1;">
+                        <h4>⚠️ Could not load detailed source analysis</h4>
+                        <p>Basic source filtering is still available. Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // NEW: Render source analysis grid
+        function renderSourceAnalysis(bySource, diagnostics) {
+            const grid = document.getElementById('sourceAnalysisGrid');
+            
+            // Define expected sources and their info
+            const expectedSources = {
+                'gmail_linkedin': {
+                    name: 'LinkedIn (Gmail)',
+                    description: 'Primary source from LinkedIn job alert emails',
+                    icon: '📧'
+                },
+                'simplyhired': {
+                    name: 'SimplyHired',
+                    description: 'Secondary source from SimplyHired.com',
+                    icon: '🔍'
+                },
+                'indeed': {
+                    name: 'Indeed',
+                    description: 'High-volume source from Indeed.com',
+                    icon: '💼'
+                },
+                'themuse': {
+                    name: 'The Muse',
+                    description: 'API source for curated jobs',
+                    icon: '🎯'
+                },
+                'usajobs': {
+                    name: 'USAJobs',
+                    description: 'Government positions',
+                    icon: '🏛️'
+                },
+                'api_scraper': {
+                    name: 'API Sources',
+                    description: 'Multiple API-based job sources',
+                    icon: '🔗'
+                }
+            };
+            
+            let html = '';
+            let totalActiveSources = 0;
+            
+            // Force re-analyze all jobs
+            async function forceReanalyzeJobs() {
+                try {
+                    if (!confirm('⚠️ This will re-analyze ALL jobs with AI, which may take several minutes and use OpenAI API credits.\n\nThis should only be used after major profile changes.\n\nContinue?')) {
+                        return;
+                    }
+                    
+                    const response = await apiCall('/jobs/force-reanalyze', {
+                        method: 'POST',
+                        body: JSON.stringify({ confirm: true })
+                    });
+                    
+                    alert(`✅ Force re-analysis completed!\n\nRe-analyzed ${response.reanalyzed_count} out of ${response.total_jobs} jobs.`);
+                    
+                    // Refresh jobs to show updated analysis
+                    await loadJobs();
+                    
+                } catch (error) {
+                    alert(`Failed to force re-analyze jobs: ${error.message}`);
+                }
+            }
+
+            // Add cards for all expected sources
+            for (const [sourceKey, sourceInfo] of Object.entries(expectedSources)) {
+                const jobCount = bySource[sourceKey] || 0;
+                const sourceData = diagnostics.by_source?.[sourceKey] || {};
+                
+                // Determine status
+                let status = 'broken';
+                let statusText = 'Not Working';
+                let cardClass = 'broken';
+                
+                if (jobCount > 0) {
+                    totalActiveSources++;
+                    if (jobCount >= 5) {
+                        status = 'working';
+                        statusText = 'Working Well';
+                        cardClass = 'working';
+                    } else {
+                        status = 'partial';
+                        statusText = 'Limited Results';
+                        cardClass = 'partial';
+                    }
+                }
+                
+                // URL stats if available
+                const urlStats = sourceData.with_urls || 0;
+                const totalJobs = sourceData.total || jobCount;
+                const urlPercent = totalJobs > 0 ? Math.round((urlStats / totalJobs) * 100) : 0;
+                
+                html += `
+                    <div class="source-card ${cardClass}">
+                        <div class="source-name">
+                            ${sourceInfo.icon} ${sourceInfo.name}
+                        </div>
+                        <div class="source-stats">
+                            Jobs: ${jobCount} | URLs: ${urlPercent}%
+                        </div>
+                        <div style="font-size: 0.9em; color: #666; margin: 8px 0;">
+                            ${sourceInfo.description}
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <span class="source-status status-${status}">${statusText}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Add cards for any unexpected sources found in the database
+            for (const [sourceKey, count] of Object.entries(bySource)) {
+                if (!expectedSources[sourceKey] && count > 0) {
+                    totalActiveSources++;
+                    html += `
+                        <div class="source-card working">
+                            <div class="source-name">
+                                🔗 ${sourceKey}
+                            </div>
+                            <div class="source-stats">
+                                Jobs: ${count}
+                            </div>
+                            <div style="font-size: 0.9em; color: #666; margin: 8px 0;">
+                                Unexpected source found in database
+                            </div>
+                            <div style="margin-top: 8px;">
+                                <span class="source-status status-working">Active</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Update active sources count in header
+            document.getElementById('activeSources').textContent = totalActiveSources;
+            
+            grid.innerHTML = html;
+        }
+
+        // Render jobs in the UI
+        function renderJobsWithStatus() {
+            const container = document.getElementById('jobsContainer');
+            const limit = parseInt(document.getElementById('jobLimit').value);
+            const jobsToShow = currentJobs.slice(0, limit);
+            
+            console.log('Rendering jobs:', jobsToShow.length);
+            
+            if (jobsToShow.length === 0) {
+                container.innerHTML = '<div class="loading">No jobs found. Try adjusting your filters or search for new jobs.</div>';
+                return;
+            }
+
+            container.innerHTML = jobsToShow.map(job => createJobCard(job)).join('');
+            updateFilterInfo(); // NEW: Update filter info when rendering
+        }
+
+        // Create a job card HTML (ENHANCED with better source badges)
+        function createJobCard(job) {
+            const score = job.compatibility_score || 0;
+            const scoreClass = score >= 70 ? 'score-high' : score >= 50 ? 'score-medium' : 'score-low';
+            const scoreEmoji = score >= 70 ? '🟢' : score >= 50 ? '🟡' : '🔴';
+            
+            // Determine score source and add appropriate indicator
+            let sourceIcon = '❓';
+            let sourceText = 'Unknown';
+
+            if (job.score_source === 'AI_ANALYSIS') {
+                sourceIcon = '🤖';
+                sourceText = 'AI Analysis';
+            } else if (job.score_source === 'AI_WITH_RESUME_MATCH') {
+                sourceIcon = '🤖📄';
+                sourceText = 'AI + Resume Match';
+            } else if (job.score_source === 'FALLBACK_LEARNED') {
+                sourceIcon = '🧠';
+                sourceText = 'Learned Pattern';
+            } else if (job.score_source === 'RULE_BASED') {
+                sourceIcon = '📋';
+                sourceText = 'Rule Based';
+            } else if (job.ai_analyzed === true) {
+                // Backward compatibility for jobs without score_source field
+                sourceIcon = '🤖';
+                sourceText = 'AI Analysis';
+            } else if (job.ai_analyzed === false) {
+                sourceIcon = '🧠';
+                sourceText = 'Learned Pattern';
+            }
+            
+            // NEW: Enhanced source badge
+            const source = job.source || 'unknown';
+            let sourceBadgeIcon = '🔗';
+            if (source.includes('gmail') || source.includes('linkedin')) {
+                sourceBadgeIcon = '📧';
+            } else if (source.includes('simplyhired')) {
+                sourceBadgeIcon = '🔍';
+            } else if (source.includes('indeed')) {
+                sourceBadgeIcon = '💼';
+            } else if (source.includes('muse')) {
+                sourceBadgeIcon = '🎯';
+            } else if (source.includes('usajobs')) {
+                sourceBadgeIcon = '🏛️';
+            }
+            
+            // Enhanced salary display
+            let salaryInfo = 'Not specified';
+            if (job.salary_min && job.salary_max) {
+                salaryInfo = `${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
+            } else if (job.salary_min) {
+                salaryInfo = `${job.salary_min.toLocaleString()}+`;
+            } else if (job.salary_max) {
+                salaryInfo = `Up to ${job.salary_max.toLocaleString()}`;
+            }
+            
+            // Show if title was cleaned
+            const titleDisplay = job.original_title ? 
+                `${job.title} <small style="color: #999;">(cleaned from: "${job.original_title.substring(0, 60)}...")</small>` : 
+                job.title;
+
+            // Show resume compatibility if available
+            let resumeMatchInfo = '';
+            if (job.resume_matches && Object.keys(job.resume_matches).length > 0) {
+                const bestMatch = job.best_resume;
+                const bestScore = job.resume_compatibility_score || 0;
+                
+                resumeMatchInfo = `
+                    <div style="background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                        <h4 style="color: #1976d2; margin-bottom: 10px;">📄 Resume Match Analysis</h4>
+                        <div style="margin-bottom: 10px;">
+                            <strong>Best Resume:</strong> ${bestMatch} (${bestScore.toFixed(1)}% match)
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                            ${Object.entries(job.resume_matches).map(([resume, score]) => `
+                                <div style="background: rgba(255,255,255,0.7); padding: 8px; border-radius: 5px;">
+                                    <strong>${resume}:</strong> ${score.toFixed(1)}%
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            const aiAnalysis = job.ai_analysis ? `
+                <div class="ai-analysis">
+                    <h4>🤖 AI Analysis</h4>
+                    <div class="ai-highlights">
+                        <div class="highlight-box">
+                            <strong>Experience Level:</strong> ${job.ai_analysis.experience_level || 'N/A'}
+                        </div>
+                        <div class="highlight-box">
+                            <strong>Company Size:</strong> ${job.ai_analysis.company_size || 'N/A'}
+                        </div>
+                        <div class="highlight-box">
+                            <strong>Industry:</strong> ${job.ai_analysis.industry || 'N/A'}
+                        </div>
+                        <div class="highlight-box">
+                            <strong>AI Score:</strong> ${job.ai_analysis.match_score || 'N/A'}/100
+                        </div>
+                    </div>
+                    ${job.ai_analysis.key_highlights ? `
+                        <div style="margin-top: 15px;">
+                            <strong>✅ Key Highlights:</strong>
+                            <ul style="margin: 5px 0 0 20px;">
+                                ${job.ai_analysis.key_highlights.map(h => `<li>${h}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    ${job.ai_analysis.potential_concerns ? `
+                        <div style="margin-top: 10px;">
+                            <strong>⚠️ Potential Concerns:</strong>
+                            <ul style="margin: 5px 0 0 20px;">
+                                ${job.ai_analysis.potential_concerns.map(c => `<li>${c}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+            ` : `
+                <div style="text-align: center; margin: 15px 0;">
+                    <button class="btn btn-secondary" onclick="analyzeJobWithAI('${job.job_id}')">
+                        🤖 Analyze with AI
+                    </button>
+                </div>
+            `;
+
+            const ratingSection = ratedJobs.has(job.job_id) ? `
+                <div class="rated">
+                    ✅ You've rated this job in this session!
+                </div>
+            ` : `
+                <div class="rating-section">
+                    <h4>Rate this job match:</h4>
+                    <div class="star-rating">
+                        ${[1,2,3,4,5].map(rating => `
+                            <button class="star-btn" onclick="rateJob('${job.job_id}', ${rating})" title="${rating} star${rating > 1 ? 's' : ''}">
+                                ${rating} Star${rating > 1 ? 's' : ''}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <textarea class="notes-input" id="notes_${job.job_id}" placeholder="Optional notes about this job..."></textarea>
+                    <button class="btn" onclick="skipJob('${job.job_id}')">Skip for now</button>
+                </div>
+            `;
+
+            return `
+                <div class="job-card">
+                    <div class="job-header">
+                        <div>
+                            <div class="job-title">${titleDisplay}</div>
+                            <div class="job-company">${job.company}</div>
+                            <div style="margin-top: 8px;">
+                                <span class="source-badge source-${source.replace(/[^a-zA-Z0-9]/g, '')}">
+                                    ${sourceBadgeIcon} ${source}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="compatibility-score ${scoreClass}">
+                            ${scoreEmoji} ${score.toFixed(1)}%<br>
+                            <small style="font-size: 0.8em; opacity: 0.9;">
+                                ${sourceIcon} ${sourceText}
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="job-details">
+                        <div class="detail-group">
+                            <div class="detail-label">📍 Location</div>
+                            <div>${job.location || 'Not specified'}</div>
+                        </div>
+                        <div class="detail-group">
+                            <div class="detail-label">💼 Remote Type</div>
+                            <div>${job.remote_type || 'Not specified'}</div>
+                        </div>
+                        <div class="detail-group">
+                            <div class="detail-label">💰 Salary</div>
+                            <div>${salaryInfo}</div>
+                        </div>
+                        <div class="detail-group">
+                            <div class="detail-label">🔗 Source</div>
+                            <div>${job.source || 'Unknown'}</div>
+                        </div>
+                        <div class="detail-group">
+                            <div class="detail-label">📅 Found Date</div>
+                            <div>${job.found_date ? new Date(job.found_date).toLocaleDateString() : 'Unknown'}</div>
+                        </div>
+                        <div class="detail-group">
+                            <div class="detail-label">🆔 Job ID</div>
+                            <div style="font-family: monospace; font-size: 0.8em;">${job.job_id}</div>
+                        </div>
+                    </div>
+
+                    ${aiAnalysis}
+
+                    ${resumeMatchInfo}
+
+                    <div class="description-box">
+                        <strong>📝 Job Description:</strong><br>
+                        ${job.description || 'No description available'}
+                    </div>
+
+                    <div style="text-align: center; margin: 15px 0;">
+                        ${job.url ? `
+                            <button class="btn btn-primary" onclick="openJobUrl('${job.url}', '${job.job_id}')">
+                                🔗 View Job Posting
+                            </button>
+                            <br><small style="color: #666; margin-top: 5px; display: block;">URL: ${job.url.length > 60 ? job.url.substring(0, 60) + '...' : job.url}</small>
+                        ` : `
+                            <button class="btn" style="background: #95a5a6; cursor: not-allowed;" disabled>
+                                ❌ No URL Available
+                            </button>
+                            <br><small style="color: #e74c3c; margin-top: 5px; display: block;">
+                                Source: ${job.source} | This job was found without a direct link
+                            </small>
+                            <button class="btn btn-secondary" onclick="searchJobManually('${job.title}', '${job.company}')" style="margin-top: 10px;">
+                                🔍 Search Manually
+                            </button>
+                        `}
+                    </div>
+
+                    ${ratingSection}
+                </div>
+            `;
+        }
+
+        // NEW: Enhanced filtering functions
+        function filterJobs() {
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter) {
+                currentStatusFilter = statusFilter.value;
+            }
+            loadJobs(); // This line is crucial - it should reload jobs with the new filter
+        }
+
+        // NEW: Job sorting function
+        function sortJobs() {
+            const sortBy = document.getElementById('sortBy').value;
+            
+            currentJobs.sort((a, b) => {
+                switch (sortBy) {
+                    case 'score':
+                        return (b.compatibility_score || 0) - (a.compatibility_score || 0);
+                    case 'date':
+                        return new Date(b.found_date || 0) - new Date(a.found_date || 0);
+                    case 'company':
+                        return (a.company || '').localeCompare(b.company || '');
+                    case 'title':
+                        return (a.title || '').localeCompare(b.title || '');
+                    default:
+                        return 0;
+                }
+            });
+            
+            renderJobsWithStatus();
+        }
+
+        // NEW: Update filter information display
+        function updateFilterInfo() {
+            const filterInfo = document.getElementById('filterInfo');
+            const sourceFilter = document.getElementById('sourceFilter');
+            const sortBy = document.getElementById('sortBy');
+            
+            document.getElementById('currentFilter').textContent = sourceFilter.options[sourceFilter.selectedIndex].text;
+            document.getElementById('jobCount').textContent = currentJobs.length;
+            document.getElementById('currentSort').textContent = sortBy.options[sortBy.selectedIndex].text;
+            
+            filterInfo.classList.add('active');
+        }
+
+        // NEW: Enhanced source filter population with job counts
+        async function populateSourceFilter() {
+            try {
+                const response = await apiCall('/sources');
+                const sourceFilter = document.getElementById('sourceFilter');
+                
+                // Clear and rebuild options
+                sourceFilter.innerHTML = '';
+                
+                // Add "All Sources" option with total count
+                const totalJobs = Object.values(sourceStats).reduce((sum, count) => sum + count, 0);
+                const allOption = document.createElement('option');
+                allOption.value = 'all';
+                allOption.textContent = `All Sources (${totalJobs} jobs)`;
+                sourceFilter.appendChild(allOption);
+                
+                // Add individual sources with counts
+                response.sources.forEach(source => {
+                    const count = sourceStats[source] || 0;
+                    const option = document.createElement('option');
+                    option.value = source;
+                    option.textContent = `${source} (${count} jobs)`;
+                    sourceFilter.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('Failed to populate sources:', error);
+            }
+        }
+
+        // NEW: Source diagnostics functions
+        async function runSourceDiagnostics() {
+            try {
+                document.getElementById('diagnosticsModal').style.display = 'block';
+                document.getElementById('diagnosticsContent').innerHTML = '<div class="loading" style="color: #666;">🔧 Running comprehensive diagnostics...</div>';
+                
+                // Get comprehensive diagnostics
+                const diagnosticsPromises = [
+                    apiCall('/debug/sources').catch(e => ({ success: false, error: e.message })),
+                    apiCall('/health').catch(e => ({ success: false, error: e.message })),
+                    apiCall('/debug/validate-urls').catch(e => ({ success: false, error: e.message }))
+                ];
+                
+                const [sourceAnalysis, healthCheck, urlValidation] = await Promise.all(diagnosticsPromises);
+                
+                renderDiagnostics(sourceAnalysis, healthCheck, urlValidation);
+                
+            } catch (error) {
+                document.getElementById('diagnosticsContent').innerHTML = `
+                    <div class="diagnostic-item error">
+                        <h4>❌ Diagnostics Failed</h4>
+                        <p>Error running diagnostics: ${error.message}</p>
+                        <p>Make sure the API server is running: <code>python api/web_api.py</code></p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderDiagnostics(sourceAnalysis, healthCheck, urlValidation) {
+            const content = document.getElementById('diagnosticsContent');
+            
+            let html = '<h3>🔍 System Diagnostics Results</h3><div class="diagnostic-grid">';
+            
+            // API Health Check
+            if (healthCheck.success) {
+                const components = healthCheck.components || {};
+                html += `
+                    <div class="diagnostic-item ${healthCheck.status === 'healthy' ? 'success' : 'warning'}">
+                        <h4>🏥 API Health</h4>
+                        <p><strong>Status:</strong> ${healthCheck.status || 'Unknown'}</p>
+                        <p><strong>Database:</strong> ${components.database || 'Unknown'}</p>
+                        <p><strong>AI Matcher:</strong> ${components.ai_matcher || 'Unknown'}</p>
+                        <p><strong>OpenAI:</strong> ${components.openai_api || 'Missing'}</p>
+                        <p><strong>Resume Matching:</strong> ${components.resume_matching || 'Unknown'}</p>
+                        <p><strong>LinkedIn Scraping:</strong> ${components.linkedin_scraping || 'Unknown'}</p>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="diagnostic-item error">
+                        <h4>❌ API Health Check Failed</h4>
+                        <p>Error: ${healthCheck.error}</p>
+                    </div>
+                `;
+            }
+            
+            // Source Analysis
+            if (sourceAnalysis.success) {
+                const analysis = sourceAnalysis.analysis;
+                const totalSources = Object.keys(analysis.by_source).length;
+                html += `
+                    <div class="diagnostic-item ${analysis.total_jobs > 0 ? 'success' : 'warning'}">
+                        <h4>📊 Job Sources Overview</h4>
+                        <p><strong>Total Jobs:</strong> ${analysis.total_jobs}</p>
+                        <p><strong>Active Sources:</strong> ${totalSources}</p>
+                        <p><strong>Jobs Missing URLs:</strong> ${analysis.url_issues?.missing_urls?.length || 0}</p>
+                        <p><strong>URL Domains Found:</strong> ${Object.keys(analysis.url_issues?.url_patterns || {}).length}</p>
+                    </div>
+                `;
+                
+                // Individual source details
+                for (const [source, data] of Object.entries(analysis.by_source)) {
+                    const urlPercent = data.total > 0 ? Math.round((data.with_urls / data.total) * 100) : 0;
+                    const isHealthy = data.total > 0 && urlPercent > 50;
+                    
+                    html += `
+                        <div class="diagnostic-item ${isHealthy ? 'success' : 'warning'}">
+                            <h4>🔗 ${source}</h4>
+                            <p><strong>Total Jobs:</strong> ${data.total}</p>
+                            <p><strong>Jobs with URLs:</strong> ${data.with_urls} (${urlPercent}%)</p>
+                            <p><strong>Jobs without URLs:</strong> ${data.without_urls}</p>
+                            <p><strong>Status:</strong> ${isHealthy ? '✅ Healthy' : '⚠️ Issues detected'}</p>
+                        </div>
+                    `;
+                }
+            } else {
+                html += `
+                    <div class="diagnostic-item error">
+                        <h4>❌ Source Analysis Failed</h4>
+                        <p>Error: ${sourceAnalysis.error}</p>
+                    </div>
+                `;
+            }
+            
+            // URL Validation Results
+            if (urlValidation.success) {
+                const stats = urlValidation.url_validation;
+                const healthyUrls = stats.valid_urls > stats.invalid_urls;
+                html += `
+                    <div class="diagnostic-item ${healthyUrls ? 'success' : 'warning'}">
+                        <h4>🔗 URL Validation</h4>
+                        <p><strong>Valid URLs:</strong> ${stats.valid_urls}</p>
+                        <p><strong>Invalid URLs:</strong> ${stats.invalid_urls}</p>
+                        <p><strong>Missing URLs:</strong> ${stats.missing_urls}</p>
+                        <p><strong>Total Jobs:</strong> ${stats.total_jobs}</p>
+                        ${stats.problematic_urls?.length > 0 ? `
+                            <p><strong>Problematic URLs:</strong> ${stats.problematic_urls.length} found</p>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="diagnostic-item warning">
+                        <h4>⚠️ URL Validation Unavailable</h4>
+                        <p>Could not validate URLs: ${urlValidation.error}</p>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            
+            // Add recommendations section
+            html += generateRecommendations(sourceAnalysis, healthCheck, urlValidation);
+            
+            content.innerHTML = html;
+        }
+
+        function generateRecommendations(sourceAnalysis, healthCheck, urlValidation) {
+            let html = '<h3 style="margin-top: 30px;">💡 Recommendations</h3><div class="diagnostic-grid">';
+            let hasRecommendations = false;
+            
+            // Check for OpenAI API issues
+            if (healthCheck.success && (!healthCheck.components?.openai_api || healthCheck.components.openai_api === 'missing')) {
+                html += `
+                    <div class="diagnostic-item error">
+                        <h4>🔑 OpenAI API Key Missing</h4>
+                        <p>Add your OpenAI API key to .env file to enable AI job analysis.</p>
+                        <p><strong>Fix:</strong> Create/edit .env file and add: <code>OPENAI_API_KEY=your_key_here</code></p>
+                    </div>
+                `;
+                hasRecommendations = true;
+            }
+            
+            // Check for limited sources
+            if (sourceAnalysis.success) {
+                const analysis = sourceAnalysis.analysis;
+                const activeSources = Object.values(analysis.by_source).filter(data => data.total > 0).length;
+                
+                if (activeSources <= 1) {
+                    html += `
+                        <div class="diagnostic-item warning">
+                            <h4>📈 Limited Job Sources</h4>
+                            <p>Only ${activeSources} source is working. Consider debugging other scrapers:</p>
+                            <p><strong>Check:</strong> Run <code>python main.py</code> and look for scraper errors</p>
+                            <p><strong>Common issues:</strong> Missing API keys, website changes, rate limiting</p>
+                        </div>
+                    `;
+                    hasRecommendations = true;
+                }
+                
+                // Check for URL issues
+                const missingUrls = analysis.url_issues?.missing_urls?.length || 0;
+                if (missingUrls > 10) {
+                    html += `
+                        <div class="diagnostic-item warning">
+                            <h4>🔗 Many Jobs Missing URLs</h4>
+                            <p>${missingUrls} jobs don't have URLs. These can't be opened directly.</p>
+                            <p><strong>Sources affected:</strong> Check if scrapers are extracting URLs properly</p>
+                        </div>
+                    `;
+                    hasRecommendations = true;
+                }
+            }
+            
+            if (!hasRecommendations) {
+                html += `
+                    <div class="diagnostic-item success">
+                        <h4>✅ System Healthy</h4>
+                        <p>All major components are working correctly!</p>
+                        <p>Your job search system is functioning well with multiple sources active.</p>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        async function fixBrokenSources() {
+            if (confirm('This will attempt to automatically fix common source issues. Continue?')) {
+                try {
+                    // For now, just run the job search to test all scrapers
+                    await runJobSearch();
+                    alert('🔧 Started job search to test all scrapers. Check the diagnostics again in a few minutes.');
+                } catch (error) {
+                    alert(`Fix attempt failed: ${error.message}`);
+                }
+            }
+        }
+
+        function closeDiagnostics() {
+            document.getElementById('diagnosticsModal').style.display = 'none';
+        }
+
+
+        // Keyword management functions
+        async function addKeyword(type) {
+            try {
+                const inputId = type === 'positive' ? 'newPositiveKeyword' : 'newNegativeKeyword';
+                const input = document.getElementById(inputId);
+                const keyword = input.value.trim().toLowerCase();
+                
+                if (!keyword) {
+                    alert('Please enter a keyword');
+                    return;
+                }
+                
+                // Get current profile
+                const profileResponse = await apiCall('/profile');
+                const profile = profileResponse.profile;
+                
+                // Add keyword
+                const keywordArray = type === 'positive' ? 'keywords_positive' : 'keywords_negative';
+                if (!profile[keywordArray]) {
+                    profile[keywordArray] = [];
+                }
+                
+                if (!profile[keywordArray].includes(keyword)) {
+                    profile[keywordArray].push(keyword);
+                    
+                    // Save profile
+                    await apiCall('/profile', {
+                        method: 'POST',
+                        body: JSON.stringify(profile)
+                    });
+                    
+                    // Clear input
+                    input.value = '';
+                    
+                    // Refresh display
+                    showAIConfig();
+                    
+                    alert(`✅ Added "${keyword}" to ${type} keywords`);
+                } else {
+                    alert(`"${keyword}" is already in ${type} keywords`);
+                }
+                
+            } catch (error) {
+                alert(`Failed to add keyword: ${error.message}`);
+            }
+        }
+
+        async function removeKeyword(type, keyword) {
+            try {
+                if (!confirm(`Remove "${keyword}" from ${type} keywords?`)) {
+                    return;
+                }
+                
+                // Get current profile
+                const profileResponse = await apiCall('/profile');
+                const profile = profileResponse.profile;
+                
+                // Remove keyword
+                const keywordArray = type === 'positive' ? 'keywords_positive' : 'keywords_negative';
+                if (profile[keywordArray]) {
+                    profile[keywordArray] = profile[keywordArray].filter(k => k !== keyword);
+                    
+                    // Save profile
+                    await apiCall('/profile', {
+                        method: 'POST',
+                        body: JSON.stringify(profile)
+                    });
+                    
+                    // Refresh display
+                    showAIConfig();
+                    
+                    alert(`✅ Removed "${keyword}" from ${type} keywords`);
+                }
+                
+            } catch (error) {
+                alert(`Failed to remove keyword: ${error.message}`);
+            }
+        }
+
+        async function cleanupKeywords() {
+            try {
+                if (!confirm('This will remove incorrectly added negative keywords. Continue?')) {
+                    return;
+                }
+                
+                const response = await apiCall('/debug/cleanup-keywords', { method: 'POST' });
+                
+                alert(`✅ Cleanup complete! Removed ${response.removed_words?.length || 0} problematic keywords.`);
+                showAIConfig(); // Refresh display
+                
+            } catch (error) {
+                alert(`Failed to cleanup keywords: ${error.message}`);
+            }
+        }
+
+        async function resetAIProfile() {
+            try {
+                if (!confirm('This will reset your AI profile to defaults but keep your job feedback. Continue?')) {
+                    return;
+                }
+                
+                const response = await apiCall('/debug/reset-profile', { method: 'POST' });
+                
+                alert('✅ AI profile reset to defaults. Your feedback data is preserved.');
+                showAIConfig(); // Refresh display
+                
+            } catch (error) {
+                alert(`Failed to reset profile: ${error.message}`);
+            }
+        }
+
+        async function saveAIConfiguration() {
+            try {
+                alert('✅ AI configuration saved! Changes are applied automatically when you modify keywords.');
+                
+            } catch (error) {
+                alert(`Failed to save configuration: ${error.message}`);
+            }
+        }
+
+        function closeAIConfig() {
+            document.getElementById('aiConfigModal').style.display = 'none';
+        }
+
+        // Enhanced URL opening with validation and error handling
+        function openJobUrl(url, jobId) {
+            if (!url) {
+                alert('❌ No URL available for this job posting.');
+                return;
+            }
+            
+            try {
+                window.open(url, '_blank');
+            } catch (error) {
+                console.error('Error opening URL:', error);
+                alert('Could not open URL. Please copy and paste this link: ' + url);
+            }
+        }
+
+        // Search for job manually when no URL is available
+        function searchJobManually(title, company) {
+            const searchQuery = encodeURIComponent(`${title} ${company}`);
+            const searchUrls = [
+                `https://www.google.com/search?q=${searchQuery}+job`,
+                `https://www.linkedin.com/jobs/search/?keywords=${searchQuery}`,
+                `https://www.indeed.com/jobs?q=${searchQuery}`
+            ];
+            
+            if (confirm(`Search for "${title}" at "${company}"?\n\nThis will open multiple search tabs.`)) {
+                searchUrls.forEach(url => window.open(url, '_blank'));
+            }
+        }
+
+        // Rate a job via API
+        async function rateJob(jobId, rating) {
+            try {
+                const notesElement = document.getElementById(`notes_${jobId}`);
+                const notes = notesElement ? notesElement.value : '';
+                
+                await apiCall(`/jobs/${jobId}/rate`, {
+                    method: 'POST',
+                    body: JSON.stringify({ rating, notes })
+                });
+                
+                ratedJobs.add(jobId);
+                renderJobsWithStatus();
+                await updateStats();
+                
+                alert(`✅ Job rated ${rating}/5 stars! Thank you for your feedback.`);
+                
+            } catch (error) {
+                alert(`Failed to rate job: ${error.message}`);
+            }
+        }
+
+        // Analyze job with AI
+        async function analyzeJobWithAI(jobId) {
+            try {
+                const response = await apiCall(`/debug/analyze-job/${jobId}`, {
+                    method: 'POST'
+                });
+                
+                alert('✅ Job analyzed with AI! Refreshing...');
+                await loadJobs(); // Refresh to show AI analysis
+                
+            } catch (error) {
+                alert(`Failed to analyze job: ${error.message}`);
+            }
+        }
+
+        // Skip a job
+        function skipJob(jobId) {
+            ratedJobs.add(jobId);
+            renderJobsWithStatus();
+        }
+
+        // Update statistics from API
+        async function updateStats() {
+            try {
+                const stats = await apiCall('/stats');
+                
+                document.getElementById('totalJobs').textContent = stats.database.total_jobs || 0;
+                document.getElementById('reviewedJobs').textContent = stats.ai_feedback.total_feedback || 0;
+                document.getElementById('avgRating').textContent = (stats.ai_feedback.average_rating || 0).toFixed(1);
+                
+                // Update source stats for use elsewhere
+                sourceStats = stats.database.by_source || {};
+                
+            } catch (error) {
+                console.error('Failed to update stats:', error);
+            }
+        }
+
+        // Parse all salaries via API
+        async function parseAllSalaries() {
+            try {
+                if (!confirm('This will analyze all jobs in your database to extract salary information. Continue?')) {
+                    return;
+                }
+                
+                const response = await apiCall('/debug/parse-salaries', { method: 'POST' });
+                
+                alert(`✅ Salary parsing completed! Updated ${response.updated_count} out of ${response.total_jobs} jobs.`);
+                await loadJobs(); // Refresh to show updated salary info
+                
+            } catch (error) {
+                alert(`Failed to parse salaries: ${error.message}`);
+            }
+        }
+
+        // Analyze job sources and URL patterns
+        async function analyzeJobSources() {
+            try {
+                const response = await apiCall('/debug/sources');
+                const analysis = response.analysis;
+                
+                let message = `📊 Job Source Analysis (${analysis.total_jobs} total jobs):\n\n`;
+                
+                // By source breakdown
+                message += `📋 Jobs by Source:\n`;
+                Object.entries(analysis.by_source).forEach(([source, data]) => {
+                    const urlPercent = data.total > 0 ? Math.round((data.with_urls / data.total) * 100) : 0;
+                    message += `• ${source}: ${data.total} jobs (${urlPercent}% have URLs)\n`;
+                });
+                
+                message += `\n`;
+                
+                // URL issues
+                if (analysis.url_issues.missing_urls.length > 0) {
+                    message += `❌ Jobs Missing URLs (${analysis.url_issues.missing_urls.length}):\n`;
+                    analysis.url_issues.missing_urls.slice(0, 5).forEach(job => {
+                        message += `• "${job.title}" at ${job.company} (${job.source})\n`;
+                    });
+                    if (analysis.url_issues.missing_urls.length > 5) {
+                        message += `... and ${analysis.url_issues.missing_urls.length - 5} more\n`;
+                    }
+                    message += `\n`;
+                }
+                
+                // URL patterns
+                if (Object.keys(analysis.url_issues.url_patterns).length > 0) {
+                    message += `🌐 URL Domains Found:\n`;
+                    const sortedDomains = Object.entries(analysis.url_issues.url_patterns)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10);
+                    
+                    sortedDomains.forEach(([domain, count]) => {
+                        message += `• ${domain}: ${count} jobs\n`;
+                    });
+                }
+                
+                alert(message);
+                
+            } catch (error) {
+                alert(`Failed to analyze sources: ${error.message}`);
+            }
+        }
+
+        // Validate all URLs in database
+        async function validateUrls() {
+            try {
+                if (!confirm('This will check all job URLs in your database. This may take a while. Continue?')) {
+                    return;
+                }
+                
+                const response = await apiCall('/debug/validate-urls');
+                const stats = response.url_validation;
+                
+                let message = `📊 URL Validation Results:\n\n`;
+                message += `✅ Valid URLs: ${stats.valid_urls}\n`;
+                message += `❌ Invalid URLs: ${stats.invalid_urls}\n`;
+                message += `❓ Missing URLs: ${stats.missing_urls}\n`;
+                message += `📝 Total jobs: ${stats.total_jobs}\n\n`;
+                
+                if (stats.problematic_urls.length > 0) {
+                    message += `Problematic URLs found:\n`;
+                    stats.problematic_urls.slice(0, 5).forEach(item => {
+                        message += `• ${item.title}: ${item.error || 'Status ' + item.status_code}\n`;
+                    });
+                    
+                    if (stats.problematic_urls.length > 5) {
+                        message += `... and ${stats.problematic_urls.length - 5} more`;
+                    }
+                }
+                
+                alert(message);
+                
+            } catch (error) {
+                alert(`Failed to validate URLs: ${error.message}`);
+            }
+        }
+
+        // Run job search via API
+        async function runJobSearch() {
+            try {
+                const response = await apiCall('/search/start', { method: 'POST' });
+                
+                alert('🔍 Job search started! This will run in the background and test all scrapers.');
+                
+                // Poll for status updates
+                const statusInterval = setInterval(async () => {
+                    try {
+                        const status = await apiCall('/search/status');
+                        console.log('Search status:', status.status);
+                        
+                        if (status.status.completed) {
+                            clearInterval(statusInterval);
+                            alert(`✅ Job search completed! ${status.status.progress}`);
+                            await loadJobs(); // Refresh jobs
+                            await analyzeJobSources(); // Refresh source analysis
+                        }
+                    } catch (error) {
+                        clearInterval(statusInterval);
+                        console.error('Failed to get search status:', error);
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                alert(`Failed to start job search: ${error.message}`);
+            }
+        }
+
+        // Resume Management Functions - FIXED VERSION
+        function showResumeManager() {
+            document.getElementById('resumeModal').style.display = 'block';
+            loadResumeManager();
+        }
+
+        function closeResumeManager() {
+            document.getElementById('resumeModal').style.display = 'none';
+        }
+
+        async function loadResumeManager() {
+            try {
+                const response = await apiCall('/resumes');
+                const resumes = response.resumes || [];
+                
+                const content = document.getElementById('resumeManagerContent');
+                
+                content.innerHTML = `
+                    <div style="margin-bottom: 20px;">
+                        <h3>📋 Your Resume Versions (${resumes.length})</h3>
+                        <button class="btn btn-primary" onclick="showAddResumeForm()">➕ Add New Resume</button>
+                    </div>
+                    
+                    ${resumes.length === 0 ? `
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <h4>No resumes uploaded yet</h4>
+                            <p>Upload your first resume to enable AI-powered job matching!</p>
+                        </div>
+                    ` : `
+                        <div style="display: grid; gap: 15px;">
+                            ${resumes.map(resume => `
+                                <div style="border: 1px solid #ddd; border-radius: 10px; padding: 20px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                        <div>
+                                            <h4 style="margin: 0 0 10px 0; color: #2c3e50;">${resume.name}</h4>
+                                            <p style="margin: 5px 0; color: #666;">
+                                                <strong>Level:</strong> ${resume.experience_level || 'N/A'} 
+                                                (${resume.experience_years || 0} years)
+                                            </p>
+                                            <p style="margin: 5px 0; color: #666;">
+                                                <strong>Target Roles:</strong> ${(resume.target_roles || []).join(', ') || 'None specified'}
+                                            </p>
+                                            <p style="margin: 5px 0; color: #666;">
+                                                <strong>Top Skills:</strong> ${(resume.top_skills || []).join(', ') || 'None'}
+                                            </p>
+                                            <p style="margin: 5px 0; color: #666;">
+                                                <strong>Industries:</strong> ${(resume.industries || []).join(', ') || 'None'}
+                                            </p>
+                                        </div>
+                                        <div style="display: flex; gap: 10px;">
+                                            <button class="btn btn-danger" onclick="deleteResume('${resume.name}')"
+                                                    style="padding: 8px 12px; font-size: 0.9em;">
+                                                🗑️ Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                `;
+                
+            } catch (error) {
+                document.getElementById('resumeManagerContent').innerHTML = `
+                    <div style="color: #e74c3c; text-align: center; padding: 20px;">
+                        ❌ Resume matching not available. Check your OpenAI API key configuration.
+                    </div>
+                `;
+            }
+        }
+
+        function showAddResumeForm() {
+            const content = document.getElementById('resumeManagerContent');
+            content.innerHTML = `
+                <div>
+                    <button class="btn" onclick="loadResumeManager()" style="margin-bottom: 15px;">← Back to Resumes</button>
+                    
+                    <h3>➕ Add New Resume</h3>
+                    
+                    <div style="margin: 20px 0; padding: 15px; background: #f0f8ff; border-radius: 10px;">
+                        <h4>📂 Choose Upload Method:</h4>
+                        <div style="margin: 15px 0;">
+                            <button class="btn btn-primary" onclick="showFileUpload()" style="margin-right: 10px;">
+                                📄 Upload Document (PDF, Word, Text)
+                            </button>
+                            <button class="btn" onclick="showTextUpload()">
+                                📝 Paste Text
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="uploadMethodContent">
+                        <!-- Upload method content will be loaded here -->
+                    </div>
+                </div>
+            `;
+            
+            // Default to file upload
+            showFileUpload();
+        }
+
+        async function showFileUpload() {
+            try {
+                // Check parsing support
+                const support = await apiCall('/resumes/parsing-support');
+                
+                const content = document.getElementById('uploadMethodContent');
+                
+                if (!support.support.pdf_support && !support.support.word_support) {
+                    content.innerHTML = `
+                        <div style="background: #fff3cd; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                            <h4>⚠️ Document Parsing Not Available</h4>
+                            <p>Document parsing libraries are not installed. Please install them to upload files:</p>
+                            <pre style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0;">pip install PyPDF2 pdfplumber python-docx mammoth</pre>
+                            <button class="btn" onclick="showTextUpload()">Use Text Upload Instead</button>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const supportedFormats = support.support.supported_formats || ['.pdf', '.docx', '.doc', '.txt'];
+                const formatText = supportedFormats.join(', ');
+                
+                content.innerHTML = `
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                        <h4>📄 Upload Resume Document</h4>
+                        
+                        <div style="display: grid; gap: 15px; margin-top: 15px;">
+                            <div>
+                                <label style="display: block; font-weight: 600; margin-bottom: 5px;">Resume Name/Version:</label>
+                                <input type="text" id="resumeName" placeholder="e.g., product_manager_2024, senior_engineer" 
+                                       style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 10px;">
+                                <small style="color: #666;">Give this resume version a unique name</small>
+                            </div>
+                            
+                            <div>
+                                <label style="display: block; font-weight: 600; margin-bottom: 5px;">Target Job Titles (comma-separated):</label>
+                                <input type="text" id="targetRoles" placeholder="e.g., Senior Product Manager, Principal PM, Director of Product" 
+                                       style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 10px;">
+                                <small style="color: #666;">Optional: specify what roles this resume targets</small>
+                            </div>
+                            
+                            <div>
+                                <label style="display: block; font-weight: 600; margin-bottom: 5px;">Upload Resume File:</label>
+                                <div style="border: 2px dashed #667eea; border-radius: 10px; padding: 30px; text-align: center; background: #fff;">
+                                    <input type="file" id="resumeFile" accept="${supportedFormats.join(',')}" 
+                                           style="margin-bottom: 15px;" onchange="handleFileSelection()">
+                                    <p style="color: #666; margin: 10px 0;">
+                                        <strong>Supported formats:</strong> ${formatText}<br>
+                                        PDF: ${support.support.pdf_support ? '✅ Supported' : '❌ Not available'} | 
+                                        Word: ${support.support.word_support ? '✅ Supported' : '❌ Not available'}
+                                    </p>
+                                    <div id="fileInfo" style="margin-top: 10px; color: #2c3e50; font-weight: 600;"></div>
+                                </div>
+                            </div>
+                            
+                            <div style="text-align: center;">
+                                <button class="btn btn-primary" onclick="uploadResumeFile()" id="uploadBtn" disabled>
+                                    📤 Upload & Analyze with AI
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                document.getElementById('uploadMethodContent').innerHTML = `
+                    <div style="color: #e74c3c; padding: 20px; text-align: center;">
+                        ❌ Cannot check parsing support: ${error.message}
+                        <br><br>
+                        <button class="btn" onclick="showTextUpload()">Use Text Upload Instead</button>
+                    </div>
+                `;
+            }
+        }
+
+        function handleFileSelection() {
+            const fileInput = document.getElementById('resumeFile');
+            const fileInfo = document.getElementById('fileInfo');
+            const uploadBtn = document.getElementById('uploadBtn');
+            
+            if (fileInput.files && fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+                
+                fileInfo.innerHTML = `
+                    📄 Selected: <strong>${file.name}</strong><br>
+                    📊 Size: ${fileSizeMB} MB<br>
+                    📅 Modified: ${new Date(file.lastModified).toLocaleDateString()}
+                `;
+                
+                uploadBtn.disabled = false;
+                uploadBtn.style.opacity = '1';
+            } else {
+                fileInfo.innerHTML = '';
+                uploadBtn.disabled = true;
+                uploadBtn.style.opacity = '0.5';
+            }
+        }
+
+        function showTextUpload() {
+            const content = document.getElementById('uploadMethodContent');
+            content.innerHTML = `
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h4>📝 Paste Resume Text</h4>
+                    
+                    <div style="display: grid; gap: 15px; margin-top: 15px;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Resume Name/Version:</label>
+                            <input type="text" id="resumeName" placeholder="e.g., product_manager_2024, senior_engineer" 
+                                   style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 10px;">
+                        </div>
+                        
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Target Job Titles (comma-separated):</label>
+                            <input type="text" id="targetRoles" placeholder="e.g., Senior Product Manager, Principal PM, Director of Product" 
+                                   style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 10px;">
+                        </div>
+                        
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Resume Text:</label>
+                            <textarea id="resumeText" rows="15" placeholder="Paste your complete resume text here..." 
+                                      style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 10px; resize: vertical;"></textarea>
+                            <small style="color: #666;">Copy your entire resume and paste it here</small>
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <button class="btn btn-primary" onclick="submitTextResume()">🤖 Add Resume & Analyze with AI</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function uploadResumeFile() {
+            try {
+                const name = document.getElementById('resumeName').value.trim();
+                const fileInput = document.getElementById('resumeFile');
+                const rolesInput = document.getElementById('targetRoles').value.trim();
+                
+                if (!name) {
+                    alert('Please enter a resume name');
+                    return;
+                }
+                
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    alert('Please select a file to upload');
+                    return;
+                }
+                
+                const file = fileInput.files[0];
+                const targetRoles = rolesInput ? rolesInput.split(',').map(r => r.trim()).filter(r => r) : [];
+                
+                // Show file size warning for large files
+                const fileSizeMB = file.size / 1024 / 1024;
+                if (fileSizeMB > 10) {
+                    if (!confirm(`Large file detected (${fileSizeMB.toFixed(1)} MB). This may take longer to process. Continue?`)) {
+                        return;
+                    }
+                }
+                
+                // Create FormData for file upload
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('name', name);
+                formData.append('target_roles', targetRoles.join(','));
+                
+                // Show loading message
+                const uploadButton = document.getElementById('uploadBtn');
+                const originalText = uploadButton.innerHTML;
+                uploadButton.innerHTML = '🔄 Uploading & Analyzing...';
+                uploadButton.disabled = true;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/resumes/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Upload failed');
+                    }
+                    
+                    alert(`✅ Resume "${name}" uploaded and analyzed successfully!\n\nFile: ${data.parse_details.filename}\nFormat: ${data.parse_details.format}\nWords: ${data.parse_details.word_count}\nAnalysis: Complete`);
+                    loadResumeManager();
+                    
+                } finally {
+                    uploadButton.innerHTML = originalText;
+                    uploadButton.disabled = false;
+                }
+                
+            } catch (error) {
+                alert(`Failed to upload resume: ${error.message}`);
+                console.error('Upload error:', error);
+            }
+        }
+
+        async function submitTextResume() {
+            try {
+                const name = document.getElementById('resumeName').value.trim();
+                const text = document.getElementById('resumeText').value.trim();
+                const rolesInput = document.getElementById('targetRoles').value.trim();
+                
+                if (!name || !text) {
+                    alert('Please fill in resume name and text');
+                    return;
+                }
+                
+                if (text.length < 100) {
+                    if (!confirm('Resume text seems quite short. Are you sure this is a complete resume?')) {
+                        return;
+                    }
+                }
+                
+                const targetRoles = rolesInput ? rolesInput.split(',').map(r => r.trim()).filter(r => r) : [];
+                
+                // Show loading state
+                const submitBtn = event.target;
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '🔄 Analyzing with AI...';
+                submitBtn.disabled = true;
+                
+                try {
+                    const response = await apiCall('/resumes/add', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: name,
+                            text: text,
+                            target_roles: targetRoles
+                        })
+                    });
+                    
+                    alert(`✅ Resume "${name}" added successfully!\n\nAI analysis complete.\nWord count: ~${text.split(' ').length} words`);
+                    loadResumeManager();
+                    
+                } finally {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+                
+            } catch (error) {
+                alert(`Failed to add resume: ${error.message}`);
+            }
+        }
+
+        async function deleteResume(resumeName) {
+            try {
+                if (!confirm(`Are you sure you want to delete resume "${resumeName}"?\n\nThis action cannot be undone.`)) {
+                    return;
+                }
+                
+                await apiCall(`/resumes/${resumeName}`, { method: 'DELETE' });
+                alert(`✅ Resume "${resumeName}" deleted successfully!`);
+                loadResumeManager();
+                
+            } catch (error) {
+                alert(`Failed to delete resume: ${error.message}`);
+            }
+        }
+        
+        // Profile Management Functions
+        function showProfile() {
+            document.getElementById('profileModal').style.display = 'block';
+            loadProfileToForm();
+        }
+
+        function closeProfile() {
+            document.getElementById('profileModal').style.display = 'none';
+        }
+
+        async function loadProfile() {
+            try {
+                const response = await apiCall('/profile');
+                userProfile = response.profile;
+            } catch (error) {
+                console.error('Failed to load profile:', error);
+                // Use default profile if API fails
+                userProfile = {
+                    current_role: "Product Manager",
+                    experience_years: 5,
+                    salary_min: 100000,
+                    salary_max: 150000,
+                    skills: ["Product Management"],
+                    location_preferences: ["Remote"],
+                    preferred_companies: []
+                };
+            }
+        }
+
+        function loadProfileToForm() {
+            document.getElementById('currentRole').value = userProfile.current_role || '';
+            document.getElementById('experienceYears').value = userProfile.experience_years || 0;
+            document.getElementById('salaryMin').value = userProfile.salary_min || 0;
+            document.getElementById('salaryMax').value = userProfile.salary_max || 0;
+            document.getElementById('skills').value = (userProfile.skills || []).join(', ');
+            document.getElementById('locations').value = (userProfile.location_preferences || []).join(', ');
+            document.getElementById('companies').value = (userProfile.preferred_companies || []).join(', ');
+        }
+
+        async function saveProfile() {
+            try {
+                const profileData = {
+                    current_role: document.getElementById('currentRole').value,
+                    experience_years: parseInt(document.getElementById('experienceYears').value),
+                    salary_min: parseInt(document.getElementById('salaryMin').value),
+                    salary_max: parseInt(document.getElementById('salaryMax').value),
+                    skills: document.getElementById('skills').value.split(',').map(s => s.trim()).filter(s => s),
+                    location_preferences: document.getElementById('locations').value.split(',').map(s => s.trim()).filter(s => s),
+                    preferred_companies: document.getElementById('companies').value.split(',').map(s => s.trim()).filter(s => s)
+                };
+                
+                await apiCall('/profile', {
+                    method: 'POST',
+                    body: JSON.stringify(profileData)
+                });
+                
+                userProfile = profileData;
+                alert('✅ Profile saved successfully!');
+                closeProfile();
+                
+            } catch (error) {
+                alert(`Failed to save profile: ${error.message}`);
+            }
+        }
+
+        // Handle modal clicks
+        window.onclick = function(event) {
+            const profileModal = document.getElementById('profileModal');
+            const resumeModal = document.getElementById('resumeModal');
+            const diagnosticsModal = document.getElementById('diagnosticsModal');
+            
+            if (event.target === profileModal) {
+                closeProfile();
+            }
+            if (event.target === resumeModal) {
+                closeResumeManager();
+            }
+            if (event.target === diagnosticsModal) {
+                closeDiagnostics();
+            }
+            const aiConfigModal = document.getElementById('aiConfigModal');
+            if (event.target === aiConfigModal) {
+                closeAIConfig();
+            }
+        }
+
+        // Initialize the app when page loads
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

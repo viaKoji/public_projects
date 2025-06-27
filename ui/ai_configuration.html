@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Configuration & Learning</title>
+    <style>
+        /* 
+        CSS-Only Dark Theme for AI Configuration Interface
+        Replace only the <style> section in your existing ai_configuration.html
+        Keep ALL JavaScript and HTML exactly as-is!
+        */
+
+        :root {
+            /* Premium Dark Color Scheme - Matching Job Interface */
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-blue-hover: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --border: #334155;
+            --border-light: #475569;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Styling */
+        .header {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 24px;
+        }
+
+        /* Navigation Buttons */
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* Button Styling */
+        .btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: var(--accent-blue-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-light);
+            border-color: var(--text-muted);
+        }
+
+        .btn-danger {
+            background: var(--error);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        /* Section Styling */
+        .section {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .section h2 {
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        /* Grid Layouts */
+        .grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .grid-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        /* Card Styling */
+        .card {
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-light);
+        }
+
+        .card.success {
+            border-color: var(--success);
+            background: linear-gradient(135deg, var(--bg-primary), rgba(16, 185, 129, 0.05));
+        }
+
+        .card.warning {
+            border-color: var(--warning);
+            background: linear-gradient(135deg, var(--bg-primary), rgba(245, 158, 11, 0.05));
+        }
+
+        .card.error {
+            border-color: var(--error);
+            background: linear-gradient(135deg, var(--bg-primary), rgba(239, 68, 68, 0.05));
+        }
+
+        .card.info {
+            border-color: var(--accent-blue);
+            background: linear-gradient(135deg, var(--bg-primary), rgba(59, 130, 246, 0.05));
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        /* Statistics Grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        /* Keyword Management */
+        .keyword-container {
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 1px solid var(--border);
+        }
+
+        .keyword-tag {
+            display: inline-block;
+            padding: 6px 12px;
+            margin: 3px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .keyword-positive {
+            background: var(--success);
+            color: white;
+        }
+
+        .keyword-negative {
+            background: var(--error);
+            color: white;
+        }
+
+        .keyword-protected {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .keyword-tag button {
+            background: none;
+            border: none;
+            color: inherit;
+            margin-left: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .keyword-input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .keyword-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1em;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .keyword-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .keyword-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Feedback Items */
+        .feedback-item {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border: 1px solid var(--border);
+        }
+
+        .feedback-item.high-rating {
+            border-color: var(--success);
+            background: linear-gradient(135deg, var(--bg-secondary), rgba(16, 185, 129, 0.05));
+        }
+
+        .feedback-item.low-rating {
+            border-color: var(--error);
+            background: linear-gradient(135deg, var(--bg-secondary), rgba(239, 68, 68, 0.05));
+        }
+
+        .feedback-item h4 {
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .feedback-item p {
+            color: var(--text-secondary);
+            margin: 5px 0;
+        }
+
+        .rating-stars {
+            color: var(--warning);
+            font-size: 1.2em;
+            margin: 5px 0;
+        }
+
+        /* Explanation Boxes */
+        .explanation-box {
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+            border: 1px solid var(--border);
+        }
+
+        .explanation-box h4 {
+            color: var(--accent-blue);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .explanation-box p {
+            color: var(--text-secondary);
+            margin: 8px 0;
+        }
+
+        .explanation-box ul {
+            color: var(--text-secondary);
+            margin: 10px 0 0 20px;
+        }
+
+        /* Loading States */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 1.2em;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, var(--success), #55efc4);
+            transition: width 0.3s ease;
+        }
+
+        /* Toggle Sections */
+        .toggle-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--bg-primary);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .toggle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .toggle-content {
+            margin-top: 15px;
+            display: none;
+        }
+
+        .toggle-content.active {
+            display: block;
+        }
+
+        /* Resume Analysis */
+        .resume-analysis {
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+            border: 1px solid var(--border);
+        }
+
+        .resume-analysis h4 {
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .resume-analysis p {
+            color: var(--text-secondary);
+            margin: 5px 0;
+        }
+
+        /* Form Styling */
+        .form-group {
+            margin: 15px 0;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .form-group input, 
+        .form-group select, 
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1em;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Alert Styles */
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        /* Temporary Alert Positioning */
+        .alert-temp {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            min-width: 300px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+            }
+            
+            .keyword-input-group {
+                flex-direction: column;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.875rem;
+            }
+
+            .section {
+                padding: 20px;
+            }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mt-4 { margin-top: 16px; }
+        .font-mono { 
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace; 
+        }
+        .text-sm { font-size: 0.875rem; }
+        .font-medium { font-weight: 500; }
+        .font-semibold { font-weight: 600; }
+
+        /* Special keyword management colors for better contrast */
+        .keyword-tag {
+            transition: all 0.2s ease;
+        }
+
+        .keyword-tag:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Enhanced button states for keyword management */
+        .keyword-tag button:hover {
+            opacity: 0.8;
+            transform: scale(1.1);
+        }
+
+        /* Better focus states for form elements */
+        .keyword-input:focus,
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Improved card hover effects */
+        .card:hover {
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        /* Better spacing for statistics */
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-blue);
+        }
+
+        /* Enhanced loading states */
+        .loading {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        /* Better contrast for code elements */
+        code {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        /* Enhanced small text readability */
+        small {
+            color: var(--text-muted);
+        }
+
+        /* Better emphasis styling */
+        strong {
+            color: var(--text-primary);
+        }
+
+        em {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🤖 AI Configuration & Learning Dashboard</h1>
+            <p>Manage your AI job matching preferences, review learning patterns, and optimize compatibility scoring</p>
+            
+            <div class="nav-buttons">
+                <a href="web_job_interface.html" class="btn">← Back to Job Search</a>
+                <button class="btn btn-primary" onclick="refreshAllData()">🔄 Refresh Data</button>
+                <button class="btn btn-secondary" onclick="exportSettings()">📤 Export Settings</button>
+                <button class="btn btn-warning" onclick="runDiagnostics()">🔧 Run Diagnostics</button>
+            </div>
+        </div>
+
+        <!-- AI Learning Status Section -->
+        <div class="section">
+            <h2>🧠 AI Learning Status</h2>
+            <div id="learningStatus" class="loading">Loading AI learning analysis...</div>
+        </div>
+
+        <!-- Keyword Management Section -->
+        <div class="section">
+            <h2>🔧 Keyword Management</h2>
+            <div class="grid grid-2">
+                <!-- Positive Keywords -->
+                <div class="card success">
+                    <h3>✅ Positive Keywords</h3>
+                    <p>Keywords that boost job compatibility scores</p>
+                    <div id="positiveKeywordsList" class="keyword-container">
+                        <div class="loading" style="color: #666;">Loading keywords...</div>
+                    </div>
+                    <div class="keyword-input-group">
+                        <input type="text" id="newPositiveKeyword" class="keyword-input" 
+                               placeholder="Add positive keyword..." onkeypress="handleKeywordEnter(event, 'positive')">
+                        <button class="btn btn-primary" onclick="addKeyword('positive')">Add</button>
+                    </div>
+                </div>
+
+                <!-- Negative Keywords -->
+                <div class="card warning">
+                    <h3>🚫 Negative Keywords</h3>
+                    <p>Keywords that lower job compatibility scores</p>
+                    <div id="negativeKeywordsList" class="keyword-container">
+                        <div class="loading" style="color: #666;">Loading keywords...</div>
+                    </div>
+                    <div class="keyword-input-group">
+                        <input type="text" id="newNegativeKeyword" class="keyword-input" 
+                               placeholder="Add negative keyword..." onkeypress="handleKeywordEnter(event, 'negative')">
+                        <button class="btn btn-warning" onclick="addKeyword('negative')">Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Protected Keywords -->
+            <div class="card info">
+                <h3>🛡️ Protected Keywords</h3>
+                <p>Keywords that should never become negative (prevents AI from learning wrong patterns)</p>
+                <div id="protectedKeywordsList" class="keyword-container">
+                    <div class="loading" style="color: #666;">Loading protected keywords...</div>
+                </div>
+                <div class="keyword-input-group">
+                    <input type="text" id="newProtectedKeyword" class="keyword-input" 
+                           placeholder="Add protected keyword..." onkeypress="handleKeywordEnter(event, 'protected')">
+                    <button class="btn" onclick="addKeyword('protected')">Add</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resume Intelligence Section -->
+        <div class="section">
+            <h2>📄 Resume Intelligence</h2>
+            <div id="resumeIntelligence" class="loading">Loading resume analysis...</div>
+        </div>
+
+        <!-- Feedback Analysis Section -->
+        <div class="section">
+            <h2>📊 Feedback Analysis</h2>
+            
+            <!-- Feedback Overview -->
+            <div id="feedbackOverview" class="grid grid-3">
+                <div class="loading" style="grid-column: 1 / -1;">Loading feedback analysis...</div>
+            </div>
+
+            <!-- Recent Feedback -->
+            <div class="toggle-section">
+                <div class="toggle-header" onclick="toggleSection('recentFeedback')">
+                    <span>🕒 Recent Job Ratings</span>
+                    <span>▼</span>
+                </div>
+                <div id="recentFeedbackContent" class="toggle-content">
+                    <div id="recentFeedbackList" class="loading">Loading recent feedback...</div>
+                </div>
+            </div>
+
+            <!-- Learning Patterns -->
+            <div class="toggle-section">
+                <div class="toggle-header" onclick="toggleSection('learningPatterns')">
+                    <span>🎯 Learned Patterns</span>
+                    <span>▼</span>
+                </div>
+                <div id="learningPatternsContent" class="toggle-content">
+                    <div id="learningPatternsList" class="loading">Loading learning patterns...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Job Score Testing Section -->
+        <div class="section">
+            <h2>🧪 Test Job Scoring</h2>
+            <div class="card">
+                <h3>Test AI Scoring on Sample Job</h3>
+                <p>See how the AI would score a job with your current settings</p>
+                
+                <div class="form-group">
+                    <label>Job Title:</label>
+                    <input type="text" id="testJobTitle" placeholder="e.g., Senior Product Manager">
+                </div>
+                
+                <div class="form-group">
+                    <label>Company:</label>
+                    <input type="text" id="testJobCompany" placeholder="e.g., Microsoft">
+                </div>
+                
+                <div class="form-group">
+                    <label>Job Description:</label>
+                    <textarea id="testJobDescription" rows="4" 
+                              placeholder="Paste job description here..."></textarea>
+                </div>
+                
+                <button class="btn btn-primary" onclick="testJobScoring()">🧪 Test AI Scoring</button>
+                
+                <div id="testScoringResults" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Section -->
+        <div class="section">
+            <h2>🚀 Quick Actions</h2>
+            <div class="grid grid-3">
+                <div class="card">
+                    <h3>🧹 Cleanup Keywords</h3>
+                    <p>Remove problematic negative keywords automatically</p>
+                    <button class="btn btn-warning" onclick="cleanupKeywords()">Clean Keywords</button>
+                </div>
+                
+                <div class="card">
+                    <h3>🔄 Reset AI Profile</h3>
+                    <p>Reset to default settings (keeps feedback data)</p>
+                    <button class="btn btn-danger" onclick="resetAIProfile()">Reset Profile</button>
+                </div>
+                
+                <div class="card">
+                    <h3>💾 Save Configuration</h3>
+                    <p>Apply all changes and save settings</p>
+                    <button class="btn btn-primary" onclick="saveConfiguration()">Save Config</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentProfile = {};
+        let feedbackData = {};
+        let learningData = {};
+        let resumeData = {};
+        let currentProtectedKeywords = []; // ADDED: Track protected keywords separately
+        
+        // API Configuration
+        const API_BASE = 'http://localhost:5000/api';
+        
+        // API helper function
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'API request failed');
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+
+        // Initialize the page
+        async function init() {
+            try {
+                await loadAllData();
+            } catch (error) {
+                showAlert('error', `Failed to load data: ${error.message}`);
+            }
+        }
+
+        // Load all data
+        async function loadAllData() {
+            try {
+                await Promise.all([
+                    loadLearningStatus(),
+                    loadKeywords(),
+                    loadResumeIntelligence(),
+                    loadFeedbackAnalysis()
+                ]);
+            } catch (error) {
+                console.error('Error loading data:', error);
+                throw error;
+            }
+        }
+
+        // Load AI learning status
+        async function loadLearningStatus() {
+            try {
+                const response = await apiCall('/debug/feedback-learning');
+                learningData = response;
+                
+                const container = document.getElementById('learningStatus');
+                const feedback = response.feedback_summary || {};
+                const totalFeedback = response.total_feedback_items || 0;
+                const patterns = response.learning_patterns || {};
+                
+                container.innerHTML = `
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${totalFeedback}</div>
+                            <div class="stat-label">Feedback Items</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${feedback.average_rating ? feedback.average_rating.toFixed(1) : 'N/A'}</div>
+                            <div class="stat-label">Average Rating</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${patterns.negative_patterns_found?.length || 0}</div>
+                            <div class="stat-label">Negative Patterns</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${patterns.positive_patterns_found?.length || 0}</div>
+                            <div class="stat-label">Positive Patterns</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-2" style="margin-top: 20px;">
+                        <div class="card ${totalFeedback > 10 ? 'success' : 'warning'}">
+                            <h3>📊 Learning Progress</h3>
+                            <p><strong>Status:</strong> ${totalFeedback > 10 ? 'Well Trained' : 'Needs More Feedback'}</p>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${Math.min(100, (totalFeedback / 20) * 100)}%"></div>
+                            </div>
+                            <p style="font-size: 0.9em; margin-top: 10px;">
+                                ${totalFeedback}/20 feedback items for optimal learning
+                            </p>
+                        </div>
+                        
+                        <div class="card info">
+                            <h3>🎯 AI Confidence</h3>
+                            <p><strong>Confidence Level:</strong> ${getConfidenceLevel(totalFeedback)}</p>
+                            <p style="font-size: 0.9em; margin-top: 10px;">
+                                Based on feedback volume and pattern consistency
+                            </p>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                document.getElementById('learningStatus').innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>Error:</strong> Could not load AI learning status: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Get confidence level based on feedback count
+        function getConfidenceLevel(feedbackCount) {
+            if (feedbackCount >= 20) return 'High';
+            if (feedbackCount >= 10) return 'Medium';
+            if (feedbackCount >= 5) return 'Low';
+            return 'Very Low';
+        }
+
+        // FIXED: Load keywords function
+        async function loadKeywords() {
+            try {
+                // Load positive/negative keywords from profile
+                const response = await apiCall('/profile');
+                currentProfile = response.profile;
+                
+                renderKeywords('positive', currentProfile.keywords_positive || []);
+                renderKeywords('negative', currentProfile.keywords_negative || []);
+                
+                // Load protected keywords from AI config
+                try {
+                    const protectedResponse = await apiCall('/ai/protected-words');
+                    currentProtectedKeywords = protectedResponse.protected_words || [];
+                    renderKeywords('protected', currentProtectedKeywords);
+                } catch (e) {
+                    console.warn('Protected keywords endpoint not available:', e);
+                    // Show default protected keywords if endpoint doesn't exist
+                    const defaultProtected = ['remote', 'product', 'manager', 'senior', 'director', 'lead', 'principal'];
+                    currentProtectedKeywords = defaultProtected;
+                    renderKeywords('protected', defaultProtected);
+                }
+                
+            } catch (error) {
+                ['positive', 'negative', 'protected'].forEach(type => {
+                    document.getElementById(`${type}KeywordsList`).innerHTML = `
+                        <div class="alert alert-error">Error loading ${type} keywords: ${error.message}</div>
+                    `;
+                });
+            }
+        }
+
+        // Render keywords for a specific type
+        function renderKeywords(type, keywords) {
+            const container = document.getElementById(`${type}KeywordsList`);
+            
+            if (!container) {
+                console.error(`Container for ${type} keywords not found`);
+                return;
+            }
+            
+            if (!keywords || keywords.length === 0) {
+                container.innerHTML = `<em style="color: #666;">No ${type} keywords set</em>`;
+                return;
+            }
+            
+            const keywordClass = `keyword-${type}`;
+            container.innerHTML = keywords.map(keyword => `
+                <span class="keyword-tag ${keywordClass}">
+                    ${keyword}
+                    <button onclick="removeKeyword('${type}', '${keyword}')" title="Remove keyword">×</button>
+                </span>
+            `).join('');
+        }
+
+        // FIXED: Add keyword function
+        async function addKeyword(type) {
+            try {
+                const inputId = `new${type.charAt(0).toUpperCase() + type.slice(1)}Keyword`;
+                const input = document.getElementById(inputId);
+                const keyword = input.value.trim().toLowerCase();
+                
+                if (!keyword) {
+                    showAlert('warning', 'Please enter a keyword');
+                    return;
+                }
+                
+                // Validate keyword isn't already present
+                if (await isKeywordAlreadyPresent(keyword, type)) {
+                    showAlert('warning', `"${keyword}" is already in ${type} keywords`);
+                    return;
+                }
+                
+                // Handle each keyword type appropriately
+                if (type === 'protected') {
+                    await addProtectedKeyword(keyword);
+                } else {
+                    await addProfileKeyword(type, keyword);
+                }
+                
+                // Clear input and refresh display
+                input.value = '';
+                await loadKeywords();
+                showAlert('success', `Added "${keyword}" to ${type} keywords`);
+                
+            } catch (error) {
+                showAlert('error', `Failed to add keyword: ${error.message}`);
+            }
+        }
+
+        // FIXED: Remove keyword function  
+        async function removeKeyword(type, keyword) {
+            try {
+                if (!confirm(`Remove "${keyword}" from ${type} keywords?`)) {
+                    return;
+                }
+                
+                // Handle each keyword type appropriately
+                if (type === 'protected') {
+                    await removeProtectedKeyword(keyword);
+                } else {
+                    await removeProfileKeyword(type, keyword);
+                }
+                
+                await loadKeywords();
+                showAlert('success', `Removed "${keyword}" from ${type} keywords`);
+                
+            } catch (error) {
+                showAlert('error', `Failed to remove keyword: ${error.message}`);
+            }
+        }
+
+        // Helper function: Check if keyword already exists
+        async function isKeywordAlreadyPresent(keyword, type) {
+            if (type === 'protected') {
+                return currentProtectedKeywords.includes(keyword);
+            } else {
+                const keywordArray = type === 'positive' ? 'keywords_positive' : 'keywords_negative';
+                return (currentProfile[keywordArray] || []).includes(keyword);
+            }
+        }
+
+        // Helper function: Add protected keyword
+        async function addProtectedKeyword(keyword) {
+            try {
+                // Get current protected keywords and add new one
+                const updatedProtected = [...currentProtectedKeywords, keyword];
+                
+                // Send updated list to backend
+                await apiCall('/ai/protected-words', {
+                    method: 'POST',
+                    body: JSON.stringify({ protected_words: updatedProtected })
+                });
+                
+                // Update local cache
+                currentProtectedKeywords = updatedProtected;
+                
+            } catch (error) {
+                // If endpoint doesn't exist, just update local cache
+                if (error.message.includes('404') || error.message.includes('not found')) {
+                    currentProtectedKeywords = [...currentProtectedKeywords, keyword];
+                    showAlert('warning', 'Protected keywords stored locally (endpoint not available)');
+                } else {
+                    throw error;
+                }
+            }
+        }
+
+        // Helper function: Remove protected keyword
+        async function removeProtectedKeyword(keyword) {
+            try {
+                // Remove keyword from current list
+                const updatedProtected = currentProtectedKeywords.filter(k => k !== keyword);
+                
+                // Send updated list to backend
+                await apiCall('/ai/protected-words', {
+                    method: 'POST',
+                    body: JSON.stringify({ protected_words: updatedProtected })
+                });
+                
+                // Update local cache
+                currentProtectedKeywords = updatedProtected;
+                
+            } catch (error) {
+                // If endpoint doesn't exist, just update local cache
+                if (error.message.includes('404') || error.message.includes('not found')) {
+                    currentProtectedKeywords = currentProtectedKeywords.filter(k => k !== keyword);
+                    showAlert('warning', 'Protected keywords updated locally (endpoint not available)');
+                } else {
+                    throw error;
+                }
+            }
+        }
+
+        // Helper function: Add positive/negative keyword to profile
+        async function addProfileKeyword(type, keyword) {
+            // Reload current profile to avoid conflicts
+            const freshProfile = await apiCall('/profile');
+            currentProfile = freshProfile.profile;
+            
+            // Add keyword to appropriate array
+            const keywordArray = type === 'positive' ? 'keywords_positive' : 'keywords_negative';
+            if (!currentProfile[keywordArray]) {
+                currentProfile[keywordArray] = [];
+            }
+            
+            // Check for duplicates
+            if (currentProfile[keywordArray].includes(keyword)) {
+                throw new Error(`"${keyword}" is already in ${type} keywords`);
+            }
+            
+            // Add keyword
+            currentProfile[keywordArray].push(keyword);
+            
+            // Save updated profile
+            await apiCall('/profile', {
+                method: 'POST',
+                body: JSON.stringify(currentProfile)
+            });
+        }
+
+        // Helper function: Remove positive/negative keyword from profile
+        async function removeProfileKeyword(type, keyword) {
+            // Reload current profile to avoid conflicts
+            const freshProfile = await apiCall('/profile');
+            currentProfile = freshProfile.profile;
+            
+            // Remove keyword from appropriate array
+            const keywordArray = type === 'positive' ? 'keywords_positive' : 'keywords_negative';
+            if (currentProfile[keywordArray]) {
+                currentProfile[keywordArray] = currentProfile[keywordArray].filter(k => k !== keyword);
+                
+                // Save updated profile
+                await apiCall('/profile', {
+                    method: 'POST',
+                    body: JSON.stringify(currentProfile)
+                });
+            }
+        }
+
+        // Handle Enter key in keyword inputs
+        function handleKeywordEnter(event, type) {
+            if (event.key === 'Enter') {
+                addKeyword(type);
+            }
+        }
+
+        // Load resume intelligence
+        async function loadResumeIntelligence() {
+            try {
+                const response = await apiCall('/resumes');
+                resumeData = response;
+                
+                const container = document.getElementById('resumeIntelligence');
+                const resumes = response.resumes || [];
+                
+                if (resumes.length === 0) {
+                    container.innerHTML = `
+                        <div class="alert alert-warning">
+                            <strong>No resumes uploaded yet.</strong><br>
+                            <a href="web_job_interface.html" class="btn" style="margin-top: 10px;">Upload Resume</a>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${resumes.length}</div>
+                            <div class="stat-label">Resume Versions</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${resumes.reduce((sum, r) => sum + (r.top_skills?.length || 0), 0)}</div>
+                            <div class="stat-label">Total Skills</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${resumes.reduce((sum, r) => sum + (r.target_roles?.length || 0), 0)}</div>
+                            <div class="stat-label">Target Roles</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${Math.round(resumes.reduce((sum, r) => sum + (r.experience_years || 0), 0) / resumes.length)}</div>
+                            <div class="stat-label">Avg Experience</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-3" style="margin-top: 20px;">
+                        ${resumes.map(resume => `
+                            <div class="resume-analysis">
+                                <h4>${resume.name}</h4>
+                                <p><strong>Experience:</strong> ${resume.experience_level || 'N/A'} (${resume.experience_years || 0} years)</p>
+                                <p><strong>Target Roles:</strong> ${(resume.target_roles || []).join(', ') || 'None'}</p>
+                                <p><strong>Top Skills:</strong> ${(resume.top_skills || []).slice(0, 3).join(', ') || 'None'}</p>
+                                <p><strong>Industries:</strong> ${(resume.industries || []).join(', ') || 'None'}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+            } catch (error) {
+                document.getElementById('resumeIntelligence').innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>Error:</strong> Could not load resume intelligence: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Load feedback analysis
+        async function loadFeedbackAnalysis() {
+            try {
+                const response = await apiCall('/debug/feedback-learning');
+                feedbackData = response;
+                
+                // Load feedback overview
+                const overview = document.getElementById('feedbackOverview');
+                const feedback = response.feedback_summary || {};
+                const patterns = response.learning_patterns || {};
+                
+                overview.innerHTML = `
+                    <div class="card ${feedback.average_rating >= 3 ? 'success' : 'warning'}">
+                        <h3>📊 Feedback Summary</h3>
+                        <div class="stat-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">${feedback.liked_jobs || 0}</div>
+                                <div class="stat-label">Liked Jobs</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${feedback.disliked_jobs || 0}</div>
+                                <div class="stat-label">Disliked Jobs</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${feedback.total_feedback || 0}</div>
+                                <div class="stat-label">Total Ratings</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${feedback.average_rating ? feedback.average_rating.toFixed(1) : 'N/A'}</div>
+                                <div class="stat-label">Avg Rating</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card info">
+                        <h3>🎯 Learning Insights</h3>
+                        <p><strong>Positive Patterns:</strong> ${patterns.positive_patterns_found?.length || 0} discovered</p>
+                        <p><strong>Negative Patterns:</strong> ${patterns.negative_patterns_found?.length || 0} discovered</p>
+                        <p><strong>Learning Accuracy:</strong> ${calculateLearningAccuracy(feedback)}%</p>
+                    </div>
+                    
+                    <div class="card warning">
+                        <h3>📈 Recommendations</h3>
+                        <ul style="margin: 10px 0 0 20px;">
+                            ${generateRecommendations(response).map(rec => `<li>${rec}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+                
+                // Load recent feedback
+                loadRecentFeedback();
+                loadLearningPatterns();
+                
+            } catch (error) {
+                document.getElementById('feedbackOverview').innerHTML = `
+                    <div class="alert alert-error" style="grid-column: 1 / -1;">
+                        <strong>Error:</strong> Could not load feedback analysis: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Load recent feedback
+        async function loadRecentFeedback() {
+            try {
+                const response = await apiCall('/ai/feedback-patterns');
+                const recentFeedback = response.recent_feedback || [];
+                
+                const container = document.getElementById('recentFeedbackList');
+                
+                if (recentFeedback.length === 0) {
+                    container.innerHTML = `<em style="color: #666;">No recent feedback available</em>`;
+                    return;
+                }
+                
+                container.innerHTML = recentFeedback.slice(0, 10).map(item => {
+                    const ratingClass = item.rating >= 4 ? 'high-rating' : item.rating <= 2 ? 'low-rating' : '';
+                    const stars = '★'.repeat(item.rating) + '☆'.repeat(5 - item.rating);
+                    
+                    return `
+                        <div class="feedback-item ${ratingClass}">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <h4>${item.job_title || 'Unknown Job'}</h4>
+                                    <p style="color: #666; margin: 5px 0;">${item.company || 'Unknown Company'}</p>
+                                    <div class="rating-stars">${stars}</div>
+                                    ${item.notes ? `<p style="font-style: italic; margin-top: 10px;">"${item.notes}"</p>` : ''}
+                                </div>
+                                <div style="text-align: right; font-size: 0.9em; color: #666;">
+                                    ${item.date ? new Date(item.date).toLocaleDateString() : 'Unknown date'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                document.getElementById('recentFeedbackList').innerHTML = `
+                    <div class="alert alert-error">
+                        Error loading recent feedback: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Load learning patterns
+        async function loadLearningPatterns() {
+            try {
+                const patterns = feedbackData.learning_patterns || {};
+                const container = document.getElementById('learningPatternsList');
+                
+                container.innerHTML = `
+                    <div class="grid grid-2">
+                        <div class="card success">
+                            <h4>✅ Positive Patterns Learned</h4>
+                            ${patterns.positive_patterns_found?.length > 0 ? `
+                                <ul style="margin: 10px 0 0 20px;">
+                                    ${patterns.positive_patterns_found.map(p => `<li>${p}</li>`).join('')}
+                                </ul>
+                            ` : '<p style="color: #666;">No positive patterns detected yet</p>'}
+                        </div>
+                        
+                        <div class="card warning">
+                            <h4>🚫 Negative Patterns Learned</h4>
+                            ${patterns.negative_patterns_found?.length > 0 ? `
+                                <ul style="margin: 10px 0 0 20px;">
+                                    ${patterns.negative_patterns_found.map(p => `<li>${p}</li>`).join('')}
+                                </ul>
+                            ` : '<p style="color: #666;">No negative patterns detected yet</p>'}
+                        </div>
+                    </div>
+                    
+                    <div class="explanation-box" style="margin-top: 20px;">
+                        <h4>🤖 How AI Learning Works</h4>
+                        <p>The AI analyzes your job ratings to understand your preferences:</p>
+                        <ul style="margin: 10px 0 0 20px;">
+                            <li><strong>High ratings (4-5 stars):</strong> AI learns what you like and looks for similar patterns</li>
+                            <li><strong>Low ratings (1-2 stars):</strong> AI learns what to avoid and reduces scores for similar jobs</li>
+                            <li><strong>Keywords:</strong> AI tracks which words appear in jobs you love vs hate</li>
+                            <li><strong>Companies:</strong> AI learns your company preferences over time</li>
+                        </ul>
+                    </div>
+                `;
+                
+            } catch (error) {
+                document.getElementById('learningPatternsList').innerHTML = `
+                    <div class="alert alert-error">
+                        Error loading learning patterns: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Test job scoring
+        async function testJobScoring() {
+            try {
+                const title = document.getElementById('testJobTitle').value.trim();
+                const company = document.getElementById('testJobCompany').value.trim();
+                const description = document.getElementById('testJobDescription').value.trim();
+                
+                if (!title || !company || !description) {
+                    showAlert('warning', 'Please fill in all fields for job scoring test');
+                    return;
+                }
+                
+                const resultsContainer = document.getElementById('testScoringResults');
+                resultsContainer.innerHTML = '<div class="loading">🧪 Testing AI scoring...</div>';
+                
+                // Test with current profile
+                const testJob = { title, company, description };
+                const response = await apiCall('/ai/test-keyword-impact', {
+                    method: 'POST',
+                    body: JSON.stringify({ test_job: testJob })
+                });
+                
+                const score = response.calculated_score || 0;
+                const explanation = response.explanation || 'No explanation available';
+                
+                resultsContainer.innerHTML = `
+                    <div class="explanation-box">
+                        <h4>🎯 AI Scoring Results</h4>
+                        <div class="stat-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" style="color: ${score >= 70 ? '#00b894' : score >= 50 ? '#f39c12' : '#e74c3c'}">${score}%</div>
+                                <div class="stat-label">Compatibility Score</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${score >= 70 ? 'High' : score >= 50 ? 'Medium' : 'Low'}</div>
+                                <div class="stat-label">Match Level</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <h5>💡 AI Explanation:</h5>
+                            <p style="font-style: italic;">${explanation}</p>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                document.getElementById('testScoringResults').innerHTML = `
+                    <div class="alert alert-error">
+                        Error testing job scoring: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Helper functions
+        function calculateLearningAccuracy(feedback) {
+            // Since we don't have individual rating counts, calculate based on average
+            const avgRating = feedback.average_rating || 0;
+            const totalFeedback = feedback.total_feedback || 0;
+            
+            if (totalFeedback === 0) return 0;
+            
+            // Simple accuracy based on how decisive the ratings are
+            // Low average (< 2.5) or high average (> 3.5) indicates clear preferences
+            const decisiveness = Math.abs(avgRating - 2.5) / 2.5;
+            return Math.round(decisiveness * 100);
+        }
+
+        function generateRecommendations(learningData) {
+            const recommendations = [];
+            const totalFeedback = learningData.total_feedback_items || 0;
+            const feedback = learningData.feedback_summary || {};
+            const patterns = learningData.learning_patterns || {};
+            
+            if (totalFeedback < 10) {
+                recommendations.push('Rate more jobs to improve AI learning (need 10+ ratings)');
+            }
+            
+            if (totalFeedback < 20) {
+                recommendations.push('Continue rating jobs for optimal AI performance (20+ ideal)');
+            }
+            
+            if ((patterns.negative_patterns_found?.length || 0) === 0) {
+                recommendations.push('Rate some jobs poorly to teach the AI what to avoid');
+            }
+            
+            if ((patterns.positive_patterns_found?.length || 0) === 0) {
+                recommendations.push('Rate some jobs highly to teach the AI what you prefer');
+            }
+            
+            if (feedback.average_rating > 4) {
+                recommendations.push('Consider being more selective - high ratings make learning harder');
+            }
+            
+            if (feedback.average_rating < 2) {
+                recommendations.push('Try rating some jobs positively to balance your feedback');
+            }
+            
+            if (recommendations.length === 0) {
+                recommendations.push('Your AI learning is well-balanced - keep rating jobs!');
+            }
+            
+            return recommendations;
+        }
+
+        // Toggle section visibility
+        function toggleSection(sectionId) {
+            const content = document.getElementById(`${sectionId}Content`);
+            const header = content.previousElementSibling.querySelector('span:last-child');
+            
+            if (content.classList.contains('active')) {
+                content.classList.remove('active');
+                header.textContent = '▼';
+            } else {
+                content.classList.add('active');
+                header.textContent = '▲';
+            }
+        }
+
+        // Quick action functions
+        async function cleanupKeywords() {
+            try {
+                if (!confirm('This will automatically remove problematic negative keywords. Continue?')) {
+                    return;
+                }
+                
+                const response = await apiCall('/debug/cleanup-keywords', { method: 'POST' });
+                
+                showAlert('success', `Cleanup complete! Removed ${response.removed_words?.length || 0} problematic keywords.`);
+                await loadKeywords();
+                
+            } catch (error) {
+                showAlert('error', `Failed to cleanup keywords: ${error.message}`);
+            }
+        }
+
+        async function resetAIProfile() {
+            try {
+                if (!confirm('This will reset your AI profile to defaults but keep your job feedback. Continue?')) {
+                    return;
+                }
+                
+                await apiCall('/debug/reset-profile', { method: 'POST' });
+                
+                showAlert('success', 'AI profile reset to defaults. Your feedback data is preserved.');
+                await loadAllData();
+                
+            } catch (error) {
+                showAlert('error', `Failed to reset profile: ${error.message}`);
+            }
+        }
+
+        async function saveConfiguration() {
+            try {
+                showAlert('success', 'Configuration saved! All changes are applied automatically.');
+            } catch (error) {
+                showAlert('error', `Failed to save configuration: ${error.message}`);
+            }
+        }
+
+        async function refreshAllData() {
+            try {
+                showAlert('info', 'Refreshing all data...');
+                await loadAllData();
+                showAlert('success', 'Data refreshed successfully!');
+            } catch (error) {
+                showAlert('error', `Failed to refresh data: ${error.message}`);
+            }
+        }
+
+        async function exportSettings() {
+            try {
+                const data = {
+                    profile: currentProfile,
+                    learning_data: learningData,
+                    resume_data: resumeData,
+                    protected_keywords: currentProtectedKeywords,
+                    export_date: new Date().toISOString()
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ai_configuration_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                showAlert('success', 'Settings exported successfully!');
+                
+            } catch (error) {
+                showAlert('error', `Failed to export settings: ${error.message}`);
+            }
+        }
+
+        async function runDiagnostics() {
+            try {
+                showAlert('info', 'Running AI diagnostics...');
+                
+                const diagnostics = await apiCall('/debug/feedback-learning');
+                const health = await apiCall('/health');
+                
+                let message = '🔧 AI Diagnostics Results:\n\n';
+                message += `✅ API Health: ${health.status}\n`;
+                message += `📊 Feedback Items: ${diagnostics.total_feedback_items || 0}\n`;
+                message += `🤖 AI Matcher: ${health.components?.ai_matcher || 'Unknown'}\n`;
+                message += `🔑 OpenAI API: ${health.components?.openai_api || 'Unknown'}\n`;
+                
+                alert(message);
+                showAlert('success', 'Diagnostics completed - check console for details');
+                
+            } catch (error) {
+                showAlert('error', `Diagnostics failed: ${error.message}`);
+            }
+        }
+
+        // Show alert messages
+        function showAlert(type, message) {
+            // Remove existing alerts
+            const existingAlerts = document.querySelectorAll('.alert-temp');
+            existingAlerts.forEach(alert => alert.remove());
+            
+            // Create new alert
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-temp`;
+            alert.innerHTML = `<strong>${type.charAt(0).toUpperCase() + type.slice(1)}:</strong> ${message}`;
+            alert.style.position = 'fixed';
+            alert.style.top = '20px';
+            alert.style.right = '20px';
+            alert.style.zIndex = '1000';
+            alert.style.minWidth = '300px';
+            alert.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+            
+            document.body.appendChild(alert);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+
+        // Initialize page when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

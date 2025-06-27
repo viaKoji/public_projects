@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables & Secrets
+.env
+credentials.json
+token.pickle
+
+# Data & Logs (User-specific - contains sensitive personal info)
+data/jobs.db
+data/job_feedback.json
+data/user_profile.json
+data/ai_config.json
+data/resumes/*.json
+data/*backup*
+logs/*.log
+
+# Keep data directory structure but ignore content
+!data/README.md
+!data/resumes/
+!data/resumes/README.md
+
+# IDE & OS Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Temporary Files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Backup Files
+*.bak
+*backup*
+*_backup_*
+
+# Test Files (if you add testing later)
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+
+# Documentation Build
+docs/_build/
+
+# Local Configuration Overrides
+config/local_settings.py
