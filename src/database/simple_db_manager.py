@@ -444,7 +444,9 @@ class SimpleJobDatabaseManager:
         """
         Automatically update job statuses based on business rules
         - Move 'new' jobs older than 24h to 'unrated'
+        - Move ANY rated job out of 'new' status to appropriate status
         - Set jobs with rating ≤3 to 'uninterested'
+        - Set jobs with rating >3 to 'promising'
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -461,6 +463,19 @@ class SimpleJobDatabaseManager:
                 
                 new_to_unrated = cursor.rowcount
                 
+                # NEW: Move ANY rated job out of 'new' status to appropriate status
+                cursor.execute('''
+                    UPDATE jobs 
+                    SET status = CASE 
+                        WHEN rating <= 3 THEN 'uninterested'
+                        WHEN rating > 3 THEN 'promising'
+                    END,
+                    status_updated_date = ?
+                    WHERE rating IS NOT NULL AND status = 'new'
+                ''', (datetime.now().isoformat(),))
+                
+                rated_new_updated = cursor.rowcount
+                
                 # Update jobs with rating ≤3 to 'uninterested' (unless manually overridden recently)
                 cursor.execute('''
                     UPDATE jobs 
@@ -470,12 +485,22 @@ class SimpleJobDatabaseManager:
                 
                 rated_to_uninterested = cursor.rowcount
                 
+                # NEW: Update jobs with rating >3 to 'promising' (if not already applied)
+                cursor.execute('''
+                    UPDATE jobs 
+                    SET status = 'promising', status_updated_date = ?
+                    WHERE rating > 3 AND status NOT IN ('promising', 'applied')
+                ''', (datetime.now().isoformat(),))
+                
+                rated_to_promising = cursor.rowcount
+                
                 conn.commit()
                 
-                if new_to_unrated > 0 or rated_to_uninterested > 0:
-                    self.logger.info(f"Auto-updated statuses: {new_to_unrated} new→unrated, {rated_to_uninterested} rated→uninterested")
+                total_updated = new_to_unrated + rated_new_updated + rated_to_uninterested + rated_to_promising
+                if total_updated > 0:
+                    self.logger.info(f"Auto-updated statuses: {new_to_unrated} new→unrated, {rated_new_updated} rated new→status, {rated_to_uninterested} rated→uninterested, {rated_to_promising} rated→promising")
                 
-                return new_to_unrated + rated_to_uninterested
+                return total_updated
                 
         except Exception as e:
             self.logger.error(f"Error auto-updating job statuses: {e}")

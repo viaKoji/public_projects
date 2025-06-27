@@ -512,38 +512,6 @@ def serve_index():
     """Serve the web interface"""
     return send_from_directory('../ui', 'web_job_interface.html')
     
-@app.route('/api/jobs/<job_id>/rate', methods=['POST'])
-def rate_job(job_id):
-    """Rate a job and record feedback"""
-    try:
-        if not ai_matcher:
-            return jsonify({'success': False, 'error': 'AI matcher not available'}), 400
-        
-        data = request.get_json()
-        rating = data.get('rating')
-        notes = data.get('notes', '')
-        
-        if not rating or rating < 1 or rating > 5:
-            return jsonify({'success': False, 'error': 'Invalid rating'}), 400
-        
-        # Get job from database
-        job = db_manager.get_job_by_id(job_id)
-        if not job:
-            return jsonify({'success': False, 'error': 'Job not found'}), 404
-        
-        # Record feedback
-        ai_matcher.record_feedback(job, rating, notes)
-        
-        logger.info(f"Recorded rating {rating}/5 for job {job_id}")
-        
-        return jsonify({
-            'success': True,
-            'message': f'Rating {rating}/5 recorded successfully'
-        })
-        
-    except Exception as e:
-        logger.error(f"Error rating job {job_id}: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
@@ -2398,6 +2366,7 @@ def update_job_status(job_id):
 def rate_job_with_status(job_id):
     """Rate a job and automatically update status based on rating"""
     try:
+        
         if not db_manager:
             return jsonify({'success': False, 'error': 'Database not available'}), 500
         
@@ -2421,9 +2390,16 @@ def rate_job_with_status(job_id):
             rating=rating,
             rating_notes=notes
         )
+    
         
         if not success:
             return jsonify({'success': False, 'error': 'Job not found'}), 404
+        
+        # Force status update immediately after rating
+        updated_count = db_manager.auto_update_job_statuses()
+        
+        # Check the job status after update
+        updated_job = db_manager.get_job_by_id(job_id)
         
         # Record feedback with AI matcher
         if ai_matcher:
@@ -2442,7 +2418,6 @@ def rate_job_with_status(job_id):
         })
         
     except Exception as e:
-        logger.error(f"Error rating job: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/status/statistics', methods=['GET'])

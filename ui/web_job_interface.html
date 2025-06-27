@@ -2439,24 +2439,51 @@ Changes in v3.0:
             }
         }
 
-        // Rate a job via API
+        // Rate a job via API - DEBUG VERSION
         async function rateJob(jobId, rating) {
+            console.log(`🔍 DEBUG: rateJob() called with jobId=${jobId}, rating=${rating}`);
+            
             try {
+                console.log(`🔍 DEBUG: Inside try block, about to get notes element`);
+                
                 const notesElement = document.getElementById(`notes_${jobId}`);
                 const notes = notesElement ? notesElement.value : '';
                 
-                await apiCall(`/jobs/${jobId}/rate`, {
+                console.log(`🔍 DEBUG: Notes element found:`, !!notesElement, `Notes value: "${notes}"`);
+                console.log(`🔍 DEBUG: About to call apiCall with endpoint: /jobs/${jobId}/rate`);
+                
+                // Call the rate endpoint that also updates status
+                const response = await apiCall(`/jobs/${jobId}/rate`, {
                     method: 'POST',
                     body: JSON.stringify({ rating, notes })
                 });
                 
+                console.log(`🔍 DEBUG: apiCall completed successfully. Response:`, response);
+                
+                // Show success message with status info if available
+                if (response.status) {
+                    alert(`✅ Job rated ${rating}/5 stars and status set to "${response.status}"!`);
+                } else {
+                    alert(`✅ Job rated ${rating}/5 stars! Thank you for your feedback.`);
+                }
+                
+                console.log(`🔍 DEBUG: Adding ${jobId} to ratedJobs set`);
                 ratedJobs.add(jobId);
-                renderJobsWithStatus();
+                
+                console.log(`🔍 DEBUG: About to call loadJobs()`);
+                // Refresh the job list and stats to show updated status
+                await loadJobs();
+                
+                console.log(`🔍 DEBUG: loadJobs() completed, calling updateStatusStatistics()`);
+                await updateStatusStatistics();
+                
+                console.log(`🔍 DEBUG: updateStatusStatistics() completed, calling updateStats()`);
                 await updateStats();
                 
-                alert(`✅ Job rated ${rating}/5 stars! Thank you for your feedback.`);
+                console.log(`🔍 DEBUG: rateJob() completed successfully`);
                 
             } catch (error) {
+                console.error(`🔍 DEBUG: Error in rateJob():`, error);
                 alert(`Failed to rate job: ${error.message}`);
             }
         }
