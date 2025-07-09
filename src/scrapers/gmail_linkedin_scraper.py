@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Gmail LinkedIn Job Scraper v3.5 - IMPROVED PARSING
-Fixed parsing issues: header contamination, salary extraction, location cleanup
+Gmail LinkedIn Job Scraper v4.0 - FIXED PARSING
+Properly handles all LinkedIn email formats
 """
 
 import os
@@ -11,7 +11,7 @@ import base64
 import re
 import json
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -31,7 +31,7 @@ class GmailLinkedInScraper:
             'jobalerts-noreply@linkedin.com'
         ]
         
-        print("🔧 Gmail LinkedIn Scraper v3.5 - Improved Parsing")
+        print("🔧 Gmail LinkedIn Scraper v4.0 - Fixed Parsing")
         
     def authenticate(self):
         """Authenticate with Gmail API"""
@@ -142,367 +142,310 @@ class GmailLinkedInScraper:
         return body_text
     
     def parse_jobs_from_email(self, email_text: str, subject: str) -> List[Dict]:
-        """Parse job listings from LinkedIn email text using improved section-based parsing"""
+        """Parse job listings from LinkedIn email text with improved logic"""
         jobs = []
         
         try:
-            # FIXED: Split email by "View job:" markers to properly separate each job
-            # This creates clean boundaries between individual jobs
-            job_sections = re.split(r'View job:\s*https://www\.linkedin\.com/comm/jobs/view/(\d+)', email_text)
+            # Find all job URLs first
+            job_url_pattern = r'View job:\s*(https://www\.linkedin\.com/comm/jobs/view/(\d+)[^\s]*)'
+            url_matches = list(re.finditer(job_url_pattern, email_text))
             
-            # The split creates: [text_before_first_job, job_id_1, text_after_job_1, job_id_2, text_after_job_2, ...]
-            # We need to pair each job_id with the text content that comes BEFORE it
+            if not url_matches:
+                print("   No job URLs found in email")
+                return []
             
-            for i in range(1, len(job_sections), 2):  # Start at 1, step by 2 to get job_ids
-                if i >= len(job_sections):
-                    break
-                    
-                job_id = job_sections[i]
-                job_url = f"https://www.linkedin.com/jobs/view/{job_id}/"
+            # Process each job URL and its preceding content
+            for i, match in enumerate(url_matches):
+                job_url = match.group(1).split('?')[0]  # Clean URL
+                job_id = match.group(2)
                 
-                # Get the text section that comes BEFORE this job URL
-                # This contains the job title, company, and location for THIS specific job
-                if i > 0:
-                    job_content_section = job_sections[i-1]
+                # Determine the content boundaries for this job
+                # Start: either beginning of email or end of previous job URL
+                if i == 0:
+                    start_pos = 0
+                else:
+                    # Start after the previous job's URL line
+                    prev_match = url_matches[i-1]
+                    start_pos = email_text.find('\n', prev_match.end()) + 1
+                
+                # End: current URL match position
+                end_pos = match.start()
+                
+                # Extract the job content
+                job_content = email_text[start_pos:end_pos].strip()
+                
+                # Parse this job
+                job_info = self._parse_job_content_smart(job_content, job_url, job_id)
+                
+                if job_info and self._is_valid_job(job_info):
+                    jobs.append(job_info)
                     
-                    # If this is not the first job, we need to clean up the content
-                    # The content might include the tail end of the previous job
-                    if i > 1:
-                        # Split by separators to get just the relevant part for this job
-                        lines = job_content_section.split('\n')
-                        # Take the last few lines that likely belong to this job
-                        relevant_lines = []
-                        for line in reversed(lines):
-                            line = line.strip()
-                            if not line:
-                                continue
-                            # Skip lines that are clearly metadata, not job info
-                            if any(skip in line.lower() for skip in [
-                                'apply with', 'high skills match', 'high experience match', 
-                                'connection', 'actively hiring', 'this company is', 'school alum'
-                            ]):
-                                continue
-                            relevant_lines.insert(0, line)
-                            # Stop when we have title, company, location (usually 3 lines)
-                            if len(relevant_lines) >= 3:
-                                break
-                        job_content_section = '\n'.join(relevant_lines)
-                    
-                    # Parse this specific job section with the improved method
-                    job_info = self._parse_job_section_improved(job_content_section, job_url, job_id)
-                    
-                    if job_info and self._is_valid_job(job_info):
-                        jobs.append(job_info)
-            
-            # If the section-based parsing didn't work well, fall back to alternative method
-            if len(jobs) < 2 and "View job:" in email_text:
-                print("   ⚠️ Section-based parsing found few jobs, trying alternative...")
-                jobs = self._parse_jobs_alternative_method(email_text)
-            
         except Exception as e:
             print(f"   ⚠️ Error parsing jobs from email: {e}")
-            # Fallback to original method
-            jobs = self._parse_jobs_alternative_method(email_text)
         
         return jobs
 
-    def _parse_job_section_improved(self, section_text: str, job_url: str, job_id: str) -> Optional[Dict]:
-        """IMPROVED job section parsing - correctly extracts individual job details"""
+    def _parse_job_content_smart(self, content: str, job_url: str, job_id: str) -> Optional[Dict]:
+        """Smart parsing that handles various LinkedIn email formats"""
         try:
-            lines = [line.strip() for line in section_text.split('\n') if line.strip()]
+            # Clean and split content into lines
+            lines = [line.strip() for line in content.split('\n') if line.strip()]
             
-            # Remove common LinkedIn email noise
-            filtered_lines = []
-            for line in lines:
-                # Skip email headers and navigation text
-                if any(skip_phrase in line.lower() for skip_phrase in [
-                    'your job alert', 'new jobs match', 'job picks', 'similar jobs',
-                    'preferences', 'match your', 'jobs for you', 'see all jobs',
-                    'linkedin', 'unsubscribe', 'manage', 'help center',
-                    'you are receiving', 'intended for', 'why we included',
-                    'apply with', 'high skills match', 'high experience match',
-                    'school alum', 'connection', 'actively hiring', 'this company is'
-                ]):
-                    continue
-                
-                # Skip very short lines (likely formatting)
-                if len(line) < 2:
-                    continue
-                
-                # Skip lines that are just numbers, dashes, or symbols
-                if re.match(r'^[\d\s\-\+\=\*\(\)\.]+$', line):
-                    continue
-                    
-                # Skip separator lines
-                if line.startswith('---') or line.startswith('==='):
-                    continue
-                
-                filtered_lines.append(line)
+            # Remove email artifacts and headers
+            lines = self._filter_email_artifacts(lines)
             
-            if len(filtered_lines) < 2:
+            if len(lines) < 1:
                 return None
             
-            # FIXED: Extract job information using proper sequence
-            # LinkedIn email format is typically:
-            # Line 1: Job Title
-            # Line 2: Company Name  
-            # Line 3: Location
-            # Line 4+: Additional info
+            # Identify job components using pattern matching
+            job_title = None
+            company = None
+            location = None
+            metadata = []
             
-            job_title = filtered_lines[0] if len(filtered_lines) > 0 else "Unknown Position"
-            company = filtered_lines[1] if len(filtered_lines) > 1 else "Unknown Company"
-            location = filtered_lines[2] if len(filtered_lines) > 2 else "United States"
+            # Pattern-based line classification
+            for i, line in enumerate(lines):
+                line_type = self._classify_line(line)
+                
+                if line_type == 'job_title' and not job_title:
+                    job_title = line
+                elif line_type == 'company' and not company:
+                    company = line
+                elif line_type == 'location' and not location:
+                    location = line
+                elif line_type == 'metadata':
+                    metadata.append(line)
+                elif not job_title and line_type == 'unknown':
+                    # First substantive line is usually the job title
+                    job_title = line
+                elif not company and line_type == 'unknown' and job_title:
+                    # Second substantive line is usually the company
+                    company = line
+                elif not location and line_type == 'unknown' and company:
+                    # Third substantive line might be location
+                    location = line
             
-            # Clean up extracted data
-            job_title = self._clean_job_title(job_title)
-            company = self._clean_company_name(company)
-            location = self._clean_location(location)
+            # Handle special case: only 2 lines (title + location)
+            if len(lines) == 2 and job_title and not company and location:
+                # This is likely a job with no company listed
+                pass  # Keep as is
             
-            # Look for salary in any of the lines
-            salary = None
-            for line in filtered_lines:
-                salary_match = re.search(r'\$[\d,]+(?:K)?(?:-\$[\d,]+(?:K)?)?\s*(?:/\s*year)?', line)
-                if salary_match:
-                    salary = salary_match.group().strip()
-                    break
+            # Validate and fix common parsing errors
+            job_title, company, location = self._validate_and_fix_parsing(
+                job_title, company, location, lines
+            )
             
-            # Collect additional info from remaining lines
-            additional_info = []
-            for line in filtered_lines[3:]:  # Skip title, company, location
-                if any(info_indicator in line.lower() for info_indicator in [
-                    'alumni', 'skills match', 'experience match', 'actively hiring',
-                    'connection', 'company is hiring', 'high match'
-                ]):
-                    additional_info.append(line)
+            # Extract salary if present
+            salary = self._extract_salary(content)
             
             return {
                 'job_id': job_id,
-                'title': job_title,
-                'company': company,
-                'location': location,
+                'title': job_title or "Unknown Position",
+                'company': company or "Unknown Company",
+                'location': location or "Location Not Specified",
                 'url': job_url,
                 'salary': salary,
-                'additional_info': additional_info,
+                'additional_info': metadata,
                 'source': 'gmail_linkedin',
-                'scraped_at': datetime.now().isoformat()
+                'scraped_at': datetime.now().isoformat(),
+                'found_date': datetime.now().isoformat()
             }
-        
+            
         except Exception as e:
-            print(f"   ⚠️ Error parsing fixed job section: {e}")
+            print(f"   ⚠️ Error in smart parsing: {e}")
             return None
     
-    def _looks_like_job_title(self, line: str) -> bool:
-        """Check if a line looks like a job title"""
-        # Job titles typically contain these keywords and are substantial
-        job_keywords = [
-            'engineer', 'manager', 'director', 'officer', 'analyst', 'specialist',
-            'lead', 'senior', 'principal', 'staff', 'head', 'chief', 'vice president',
-            'vp', 'svp', 'architect', 'developer', 'consultant', 'coordinator'
+    def _filter_email_artifacts(self, lines: List[str]) -> List[str]:
+        """Remove email headers, footers, and navigation elements"""
+        filtered = []
+        
+        skip_patterns = [
+            # Email headers and navigation
+            'your job alert', 'new jobs match', 'job picks', 'similar jobs',
+            'preferences', 'match your', 'jobs for you', 'see all jobs',
+            'linkedin', 'unsubscribe', 'manage preferences', 'manage your',
+            'help center', 'you are receiving', 'intended for', 'why we included',
+            'results from the new ai-powered job search',
+            
+            # Separators
+            '------', '=====', '-----',
+            
+            # Job count headers (e.g., "217 jobs in United States")
+            r'^\d+\+?\s+.*\s+jobs\s+in\s+'
         ]
         
-        if len(line) < 5 or len(line) > 100:
-            return False
+        for line in lines:
+            line_lower = line.lower()
+            
+            # Check if line should be skipped
+            skip = False
+            for pattern in skip_patterns:
+                if pattern.startswith('^'):
+                    # Regex pattern
+                    if re.search(pattern, line, re.IGNORECASE):
+                        skip = True
+                        break
+                elif pattern in line_lower:
+                    skip = True
+                    break
+            
+            if not skip and len(line) >= 2:
+                filtered.append(line)
         
-        line_lower = line.lower()
-        return any(keyword in line_lower for keyword in job_keywords)
+        return filtered
     
-    def _looks_like_location(self, line: str) -> bool:
-        """Check if a line looks like a location"""
-        # Common location patterns
-        location_indicators = [
-            'united states', 'remote', 'ca', 'ny', 'tx', 'wa', 'area',
-            'city', 'state', 'county', 'district', 'san francisco', 'new york',
-            'seattle', 'boston', 'los angeles', 'chicago', 'austin', 'denver'
+    def _classify_line(self, line: str) -> str:
+        """Classify what type of content a line represents"""
+        line_lower = line.lower()
+        
+        # Job title patterns
+        job_title_keywords = [
+            'manager', 'director', 'engineer', 'developer', 'analyst',
+            'specialist', 'coordinator', 'administrator', 'assistant',
+            'executive', 'officer', 'lead', 'senior', 'principal',
+            'architect', 'consultant', 'designer', 'scientist',
+            'ceo', 'cto', 'cfo', 'coo', 'vp', 'president',
+            'co-founder', 'founder', 'partner', 'head'
         ]
         
-        # Check for zip codes
-        if re.match(r'^\d{5}(-\d{4})?$', line.strip()):
-            return True
+        # Company patterns
+        company_suffixes = [
+            'inc', 'llc', 'corp', 'corporation', 'company', 'co',
+            'ltd', 'limited', 'group', 'partners', 'solutions',
+            'technologies', 'systems', 'services', 'labs', 'studio',
+            'digital', 'global', 'international'
+        ]
         
-        line_lower = line.lower()
-        return any(indicator in line_lower for indicator in location_indicators)
+        # Location patterns
+        location_patterns = [
+            r'^[A-Za-z\s]+,\s*[A-Z]{2}$',  # City, ST
+            r'^[A-Z]{2}$',  # Just state
+            r'\b(remote|hybrid|onsite|on-site)\b',
+            r'\b(area|region|metro|greater)\b'
+        ]
+        
+        countries = [
+            'united states', 'usa', 'canada', 'uk', 'united kingdom',
+            'australia', 'germany', 'france', 'netherlands', 'singapore'
+        ]
+        
+        # Metadata patterns
+        metadata_patterns = [
+            'alumni', 'connection', 'actively hiring', 'skills match',
+            'experience match', 'apply with', 'this company'
+        ]
+        
+        # PRIORITY CHECK: C-level and founder titles
+        if re.search(r'\b(c[a-z]o|ceo|cto|cfo|coo|co-founder|founder)\b', line_lower):
+            return 'job_title'
+        
+        # Check for pattern like "Role - Description" where Role contains job keywords
+        if ' - ' in line:
+            first_part = line.split(' - ')[0].lower()
+            if any(keyword in first_part for keyword in job_title_keywords):
+                return 'job_title'
+        
+        # Check for job title keywords
+        if any(keyword in line_lower for keyword in job_title_keywords):
+            return 'job_title'
+        
+        # Check for company
+        if any(suffix in line_lower for suffix in company_suffixes):
+            return 'company'
+        
+        # Check for location
+        for pattern in location_patterns:
+            if re.search(pattern, line, re.IGNORECASE):
+                return 'location'
+        
+        if any(country in line_lower for country in countries):
+            return 'location'
+        
+        # Check for metadata
+        if any(pattern in line_lower for pattern in metadata_patterns):
+            return 'metadata'
+        
+        # Check if it's a number-based metadata (e.g., "62 school alumni")
+        if re.match(r'^\d+\s+\w+', line):
+            return 'metadata'
+        
+        return 'unknown'
     
-    def _clean_location(self, location: str) -> str:
-        """Clean and standardize location data"""
-        if not location:
-            return "United States"
+    def _validate_and_fix_parsing(self, job_title: str, company: str, 
+                                   location: str, all_lines: List[str]) -> Tuple[str, str, str]:
+        """Validate and fix common parsing errors"""
         
-        # Handle location with separators
-        if '·' in location:
-            parts = location.split('·')
-            location = parts[0].strip()
+        # Fix: Country name parsed as company
+        countries = ['united states', 'usa', 'canada', 'uk', 'united kingdom']
+        if company and company.lower() in countries:
+            # Company is actually a location
+            if not location:
+                location = company
+                company = None
+            
+            # Try to find the real company in remaining lines
+            if not company:
+                for line in all_lines:
+                    if (line != job_title and 
+                        line != location and 
+                        self._classify_line(line) in ['company', 'unknown'] and
+                        line.lower() not in countries):
+                        company = line
+                        break
         
-        if ',' in location and 'Remote' not in location:
-            # Keep full "City, State" format
-            return location.strip()
+        # Fix: Location parsed as company
+        if company and self._classify_line(company) == 'location':
+            if not location:
+                location = company
+                company = None
         
-        # Handle zip codes - try to expand them (basic mapping)
-        zip_to_city = {
-            '98004': 'Bellevue, WA',
-            '98007': 'Bellevue, WA', 
-            '27703': 'Durham, NC',
-            '18064': 'Nazareth, PA'
-        }
+        # Fix: Job title looks like metadata
+        if job_title and self._classify_line(job_title) == 'metadata':
+            # Shift everything down
+            if company and not location:
+                location = company
+            company = job_title
+            job_title = None
+            
+            # Find the real job title
+            for line in all_lines:
+                if self._classify_line(line) == 'job_title':
+                    job_title = line
+                    break
         
-        if location.strip() in zip_to_city:
-            return zip_to_city[location.strip()]
-        
-        return location.strip()
+        return job_title, company, location
     
-    def _clean_job_title(self, title: str) -> str:
-        """Clean job title formatting"""
-        if not title:
-            return "Unknown Position"
-        
-        # Remove common prefixes and formatting
-        title = re.sub(r'^[•·\-\*]\s*', '', title)
-        title = title.strip()
-        
-        # Capitalize properly if all caps or all lowercase
-        if title.isupper() or title.islower():
-            title = title.title()
-        
-        return title
-    
-    def _clean_company_name(self, company: str) -> str:
-        """Clean company name formatting"""
-        if not company:
-            return "Unknown Company"
-        
-        # Remove common prefixes and formatting
-        company = re.sub(r'^[•·\-\*]\s*', '', company)
-        company = company.strip()
-        
-        # Remove trailing info like "(Remote)" or "- Remote"
-        company = re.sub(r'\s*[\(\-]\s*(Remote|Hybrid).*$', '', company, flags=re.IGNORECASE)
-        
-        return company
+    def _extract_salary(self, content: str) -> Optional[str]:
+        """Extract salary information from content"""
+        salary_pattern = r'\$[\d,]+(?:K)?(?:\s*-\s*\$[\d,]+(?:K)?)?\s*(?:/\s*(?:year|yr))?'
+        match = re.search(salary_pattern, content, re.IGNORECASE)
+        return match.group(0).strip() if match else None
     
     def _is_valid_job(self, job_info: Dict) -> bool:
-        """Validate that extracted job info is actually a job (not email header) - FIXED VERSION"""
+        """Validate that extracted job info is actually a job"""
         title = job_info.get('title', '').lower()
         company = job_info.get('company', '').lower()
         
-        # Filter out email headers and job search summaries that got parsed as jobs
+        # Filter out email headers and summaries
         invalid_indicators = [
             'your job alert', 'new jobs match', 'jobs match your preferences',
             'job picks for you', 'similar jobs', 'preferences', 'match your',
-            'jobs in united states', 'jobs in usa', 'jobs in us'  # NEW: Job search summaries
+            'jobs in united states', 'jobs in usa', 'jobs in us'
         ]
         
-        # NEW: Filter out LinkedIn job search summary headers with comprehensive pattern
-        import re
-        # Matches patterns like:
-        # "713 User Interface Manager Jobs in United States"
-        # "217 Vice President Sales Engineering Jobs in United States" 
-        # "2,000+ Director Project Delivery Jobs in United States"
-        # "67 Remitly Jobs in United States"
-        # "102,000+ Technology Officer Jobs in United States"
-        if re.search(r'\b\d[\d,]*\+?\s+.*\s+jobs\s+in\s+(united\s+states|usa|us)\b', title, re.IGNORECASE):
+        # Filter out job search summaries
+        if re.search(r'\b\d[\d,]*\+?\s+.*\s+jobs\s+in\s+', title, re.IGNORECASE):
             return False
         
         for indicator in invalid_indicators:
             if indicator in title or indicator in company:
                 return False
         
-        # FIXED: Allow common executive abbreviations and short but valid titles
-        common_short_titles = [
-            'ceo', 'coo', 'cto', 'cfo', 'vp', 'svp', 'evp', 'cmo', 'cpo', 'cso', 
-            'cdo', 'cio', 'pm', 'apm', 'spm', 'tpm', 'swe', 'sde', 'sre', 'qa',
-            'ui', 'ux', 'ba', 'sa', 'da', 'ml', 'ai', 'devops', 'seo', 'ppc'
-        ]
-        
-        title_length_valid = (
-            len(job_info.get('title', '')) >= 5 or  # Original rule: 5+ characters
-            title in common_short_titles or         # NEW: Allow common abbreviations
-            any(abbrev in title for abbrev in common_short_titles)  # NEW: Allow titles containing abbreviations
-        )
-        
-        # Must have reasonable title and company
-        if not title_length_valid or len(job_info.get('company', '')) < 2:
+        # Must have reasonable title
+        if len(job_info.get('title', '')) < 3:
             return False
         
         return True
-        
-        # Must have reasonable title and company
-        if not title_length_valid or len(job_info.get('company', '')) < 2:
-            return False
-        
-        return True
-            
-    def _parse_jobs_alternative_method(self, email_text: str) -> List[Dict]:
-        """Alternative parsing method for different email formats"""
-        jobs = []
-        
-        try:
-            # Look for all LinkedIn job URLs
-            url_pattern = r'https://www\.linkedin\.com/comm/jobs/view/(\d+)[^\s]*'
-            url_matches = re.finditer(url_pattern, email_text)
-            
-            for match in url_matches:
-                job_id = match.group(1)
-                job_url = f"https://www.linkedin.com/jobs/view/{job_id}/"
-                
-                # Find text around this URL (500 chars before, 100 after)
-                start_pos = max(0, match.start() - 500)
-                end_pos = min(len(email_text), match.end() + 100)
-                context = email_text[start_pos:end_pos]
-                
-                # Try to extract job info from context
-                job_info = self._extract_job_from_context(context, job_url, job_id)
-                if job_info and self._is_valid_job(job_info):
-                    jobs.append(job_info)
-        
-        except Exception as e:
-            print(f"   ⚠️ Error in alternative parsing: {e}")
-        
-        return jobs
-    
-    def _extract_job_from_context(self, context: str, job_url: str, job_id: str) -> Optional[Dict]:
-        """Extract job info from text context around URL"""
-        try:
-            lines = [line.strip() for line in context.split('\n') if line.strip()]
-            
-            # Look for job title patterns
-            job_title = "Position Not Found"
-            company = "Company Not Found"
-            location = "United States"
-            
-            for i, line in enumerate(lines):
-                if self._looks_like_job_title(line):
-                    job_title = self._clean_job_title(line)
-                    
-                    # Try to find company in next few lines
-                    for j in range(i + 1, min(i + 4, len(lines))):
-                        next_line = lines[j]
-                        if len(next_line) > 2 and not self._looks_like_location(next_line):
-                            company = self._clean_company_name(next_line)
-                            break
-                    
-                    # Try to find location
-                    for j in range(i + 1, min(i + 5, len(lines))):
-                        next_line = lines[j]
-                        if self._looks_like_location(next_line):
-                            location = self._clean_location(next_line)
-                            break
-                    
-                    break
-            
-            return {
-                'job_id': job_id,
-                'title': job_title,
-                'company': company,
-                'location': location,
-                'url': job_url,
-                'salary': None,
-                'additional_info': [],
-                'source': 'gmail_linkedin_alt',
-                'scraped_at': datetime.now().isoformat()
-            }
-        
-        except Exception as e:
-            print(f"   ⚠️ Error extracting from context: {e}")
-            return None
     
     def debug_email_content(self, max_emails: int = 3):
         """Debug method to examine raw email content"""
@@ -525,25 +468,13 @@ class GmailLinkedInScraper:
             print(f"Sender: {sender}")
             print(f"Body length: {len(body_text)} characters")
             
-            # Show first 1000 characters of body
-            print(f"\nFirst 1000 characters of body:")
-            print("-" * 40)
-            print(body_text[:1000])
-            print("-" * 40)
-            
-            # Look for LinkedIn job URLs
-            job_urls = re.findall(r'https://www\.linkedin\.com/comm/jobs/view/\d+', body_text)
-            print(f"\nFound {len(job_urls)} job URLs:")
-            for url in job_urls[:5]:  # Show first 5
-                print(f"  {url}")
-            
             # Test improved job parsing
             print(f"\n🔍 Testing improved job parsing...")
             jobs = self.parse_jobs_from_email(body_text, subject)
             print(f"✅ Parsed {len(jobs)} jobs from email")
             
-            for j, job in enumerate(jobs[:3], 1):
-                print(f"{j}. {job['title']}")
+            for j, job in enumerate(jobs[:5], 1):
+                print(f"\n{j}. {job['title']}")
                 print(f"   Company: {job['company']}")
                 print(f"   Location: {job['location']}")
                 if job.get('salary'):
@@ -552,7 +483,7 @@ class GmailLinkedInScraper:
                     print(f"   Info: {', '.join(job['additional_info'])}")
     
     def scrape_jobs(self, max_emails: int = 50, scrape_descriptions: bool = True) -> List[Dict]:
-        """Main method to scrape jobs from Gmail LinkedIn emails WITH immediate description scraping"""
+        """Main method to scrape jobs from Gmail LinkedIn emails"""
         print("🚀 Starting Gmail LinkedIn job scraping...")
         if scrape_descriptions:
             print("🔗 Will scrape LinkedIn descriptions immediately")
@@ -583,42 +514,39 @@ class GmailLinkedInScraper:
                 jobs = self.parse_jobs_from_email(body_text, subject)
                 
                 if jobs:
-                    valid_jobs = [job for job in jobs if self._is_valid_job(job)]
-                    print(f"   ✅ Found {len(valid_jobs)} valid jobs (filtered {len(jobs) - len(valid_jobs)} invalid)")
+                    print(f"   ✅ Found {len(jobs)} valid jobs")
                     
-                    # ENHANCEMENT: Immediately scrape LinkedIn descriptions
+                    # Enhance with LinkedIn descriptions if requested
                     if scrape_descriptions and linkedin_scraper:
                         enhanced_jobs = []
-                        for j, job in enumerate(valid_jobs, 1):
+                        for j, job in enumerate(jobs, 1):
                             try:
-                                print(f"   🔗 [{j}/{len(valid_jobs)}] Scraping: {job['title'][:40]}...")
+                                print(f"   🔗 [{j}/{len(jobs)}] Scraping: {job['title'][:40]}...")
                                 
                                 # Enhance job with LinkedIn content
                                 enhanced_job = linkedin_scraper.enhance_job_with_linkedin_content(job)
                                 
                                 if enhanced_job.get('scraped_successfully'):
                                     desc_len = len(enhanced_job.get('description', ''))
-                                    print(f"   ✅ [{j}/{len(valid_jobs)}] Description: {desc_len} chars")
+                                    print(f"   ✅ [{j}/{len(jobs)}] Description: {desc_len} chars")
                                 else:
                                     error = enhanced_job.get('scraping_error', 'Unknown error')
-                                    print(f"   ⚠️ [{j}/{len(valid_jobs)}] Failed: {error}")
+                                    print(f"   ⚠️ [{j}/{len(jobs)}] Failed: {error}")
                                 
                                 enhanced_jobs.append(enhanced_job)
                                 
                                 # Add delay to be respectful to LinkedIn
-                                if j < len(valid_jobs):  # No delay after last job
+                                if j < len(jobs):
                                     import time
                                     time.sleep(2)
                                 
                             except Exception as scrape_error:
-                                print(f"   ❌ [{j}/{len(valid_jobs)}] Error: {scrape_error}")
-                                enhanced_jobs.append(job)  # Keep original job
+                                print(f"   ❌ [{j}/{len(jobs)}] Error: {scrape_error}")
+                                enhanced_jobs.append(job)
                         
                         all_jobs.extend(enhanced_jobs)
                     else:
-                        # No description scraping - just add the jobs
-                        all_jobs.extend(valid_jobs)
-                        
+                        all_jobs.extend(jobs)
                 else:
                     print(f"   ⚠️ No jobs found in this email")
                 
@@ -642,38 +570,15 @@ class GmailLinkedInScraper:
             print(f"📄 Jobs with descriptions: {with_descriptions}/{len(unique_jobs)}")
         
         return unique_jobs
-    
+
 def main():
-    """Test the improved Gmail LinkedIn scraper"""
+    """Test the fixed Gmail LinkedIn scraper"""
     scraper = GmailLinkedInScraper()
     
     try:
-        # Scrape jobs
-        jobs = scraper.scrape_jobs(max_emails=20)
+        # Test with debug output first
+        scraper.debug_email_content(max_emails=2)
         
-        if jobs:
-            print(f"\n✅ Successfully scraped {len(jobs)} jobs!")
-            
-            # Display sample jobs
-            print("\n📋 Sample jobs:")
-            for i, job in enumerate(jobs[:5]):
-                print(f"\n{i+1}. {job['title']}")
-                print(f"   Company: {job['company']}")
-                print(f"   Location: {job['location']}")
-                print(f"   URL: {job['url']}")
-                if job['salary']:
-                    print(f"   Salary: {job['salary']}")
-                if job['additional_info']:
-                    print(f"   Info: {', '.join(job['additional_info'])}")
-            
-            # Save results
-            with open('gmail_scraped_jobs_improved.json', 'w') as f:
-                json.dump(jobs, f, indent=2)
-            print(f"\n💾 Jobs saved to gmail_scraped_jobs_improved.json")
-        
-        else:
-            print("\n❌ No jobs found. Check your email parsing patterns.")
-    
     except Exception as e:
         print(f"\n❌ Error: {e}")
 

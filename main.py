@@ -1,5 +1,5 @@
 # main.py
-# Version 5.1 - FIXED: Corrected import paths for multi-source scrapers
+# Version 6.0 - Simplified Gmail LinkedIn only version
 import logging
 import os
 from datetime import datetime
@@ -23,271 +23,97 @@ logging.basicConfig(
 )
 
 def main():
-    """Main function to run job search with focus on quality sources"""
-    logging.info("Starting optimized job search tool v5.1...")
+    """Main function to run Gmail LinkedIn job search"""
+    logging.info("Starting Gmail LinkedIn job search tool v6.0...")
     
     # Initialize database
     os.makedirs('data', exist_ok=True)
     os.makedirs('logs', exist_ok=True)
     db_manager = SimpleJobDatabaseManager(DATABASE_PATH)
     
-    # Initialize scrapers (import only when needed to avoid dependency issues)
-    gmail_scraper = None
-    all_new_jobs = []
-    
-    # Try to import and initialize Gmail scraper (PRIMARY SOURCE)
+    # Initialize Gmail LinkedIn scraper
     try:
         from scrapers.gmail_linkedin_scraper import GmailLinkedInScraper
         gmail_scraper = GmailLinkedInScraper()
-        logging.info("Gmail scraper initialized successfully")
+        logging.info("✅ Gmail scraper initialized successfully")
     except ImportError as e:
-        logging.warning(f"Gmail scraper not available - missing dependencies: {e}")
+        logging.error(f"❌ Gmail scraper import failed - missing dependencies: {e}")
+        print("Please install required packages:")
+        print("pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib")
+        return
     except Exception as e:
-        logging.warning(f"Gmail scraper initialization failed: {e}")
-        logging.warning("Continuing with other scrapers...")
+        logging.error(f"❌ Gmail scraper initialization failed: {e}")
+        print("Check your Gmail API setup (credentials.json and token.pickle)")
+        return
     
-    # Gmail LinkedIn emails (PRIMARY - BEST SOURCE)
-    if gmail_scraper:
-        try:
-            logging.info("🔍 Searching LinkedIn emails from Gmail (primary source)...")
-            gmail_jobs = gmail_scraper.scrape_jobs(max_emails=25, scrape_descriptions=True)
-            
-            # Add Gmail jobs to database WITH VALIDATION
-            gmail_new_jobs = 0
-            for job in gmail_jobs:
-                # Only add jobs with URLs AND that pass validation
-                if job.get('url'):
-                    # FIXED: Validate job before adding to database
-                    if gmail_scraper._is_valid_job(job):
-                        if db_manager.add_job(job):
-                            gmail_new_jobs += 1
-                            all_new_jobs.append(job)
-                    else:
-                        logging.debug(f"Skipping invalid job: {job.get('title', 'Unknown')}")
-                else:
-                    logging.debug(f"Skipping job without URL: {job.get('title', 'Unknown')}")
-            
-            logging.info(f"✅ Added {gmail_new_jobs} new jobs from LinkedIn emails")
-            
-        except Exception as e:
-            logging.error(f"Gmail scraper failed: {e}")
-    
-    # Try other high-quality scrapers
-    scrapers_attempted = 0
-    scrapers_successful = 0
-    
-    # SimplyHired scraper (SECONDARY SOURCE) - FIXED IMPORT PATH
+    # Scrape LinkedIn jobs from Gmail
     try:
-        from src.scrapers.simplyhired_scraper import SimplyHiredScraper
-        simplyhired_scraper = SimplyHiredScraper(delay=2)
-        scrapers_attempted += 1
-        logging.info("✅ SimplyHired scraper imported and initialized successfully")
+        logging.info("🔍 Searching LinkedIn emails from Gmail...")
+        gmail_jobs = gmail_scraper.scrape_jobs(max_emails=25, scrape_descriptions=True)
         
-        # Only use first 2 keywords to avoid overwhelming
-        for keyword in JOB_KEYWORDS[:2]:
-            logging.info(f"🔍 Searching SimplyHired for: {keyword}")
-            try:
-                simplyhired_jobs = simplyhired_scraper.search_jobs(
-                    keywords=keyword,
-                    location="Seattle, WA",
-                    remote=REMOTE_JOBS,
-                    max_jobs=8
-                )
-                
-                new_jobs_count = 0
-                for job in simplyhired_jobs:
-                    # Only add jobs with valid URLs
-                    if job.get('url') and job['url'].startswith('http'):
-                        if db_manager.add_job(job):
-                            new_jobs_count += 1
-                            all_new_jobs.append(job)
-                    else:
-                        logging.debug(f"Skipping SimplyHired job without valid URL: {job.get('title', 'Unknown')}")
-                
-                if new_jobs_count > 0:
-                    logging.info(f"✅ Added {new_jobs_count} new SimplyHired jobs for: {keyword}")
-                    scrapers_successful += 1
+        # Add Gmail jobs to database WITH VALIDATION
+        new_jobs_count = 0
+        for job in gmail_jobs:
+            # Only add jobs with URLs AND that pass validation
+            if job.get('url'):
+                # Validate job before adding to database
+                if gmail_scraper._is_valid_job(job):
+                    if db_manager.add_job(job):
+                        new_jobs_count += 1
                 else:
-                    logging.warning(f"⚠️ SimplyHired found 0 valid jobs for: {keyword} (found {len(simplyhired_jobs)} total)")
-                
-            except Exception as e:
-                logging.error(f"SimplyHired search failed for {keyword}: {e}")
+                    logging.debug(f"Skipping invalid job: {job.get('title', 'Unknown')}")
+            else:
+                logging.debug(f"Skipping job without URL: {job.get('title', 'Unknown')}")
         
-    except ImportError as e:
-        logging.error(f"❌ SimplyHired scraper import failed: {e}")
-        logging.error("Check if src/scrapers/simplyhired_scraper.py exists and has correct dependencies")
+        logging.info(f"✅ Added {new_jobs_count} new jobs from LinkedIn emails")
+        
     except Exception as e:
-        logging.error(f"❌ SimplyHired scraper failed: {e}")
-    
-    # Indeed scraper (TERTIARY SOURCE) - NEW: Added Indeed scraper
-    try:
-        from src.scrapers.indeed_scraper import IndeedScraper
-        indeed_scraper = IndeedScraper(delay=3)
-        scrapers_attempted += 1
-        logging.info("✅ Indeed scraper imported and initialized successfully")
-        
-        # Only use first keyword for Indeed (it's more restrictive)
-        for keyword in JOB_KEYWORDS[:1]:
-            logging.info(f"🔍 Searching Indeed for: {keyword}")
-            try:
-                indeed_jobs = indeed_scraper.search_jobs(
-                    keywords=keyword,
-                    location="Seattle, WA",
-                    remote=REMOTE_JOBS,
-                    max_jobs=5  # Lower limit due to rate limiting
-                )
-                
-                new_jobs_count = 0
-                for job in indeed_jobs:
-                    # Only add jobs with valid URLs
-                    if job.get('url') and job['url'].startswith('http'):
-                        if db_manager.add_job(job):
-                            new_jobs_count += 1
-                            all_new_jobs.append(job)
-                    else:
-                        logging.debug(f"Skipping Indeed job without valid URL: {job.get('title', 'Unknown')}")
-                
-                if new_jobs_count > 0:
-                    logging.info(f"✅ Added {new_jobs_count} new Indeed jobs for: {keyword}")
-                    scrapers_successful += 1
-                else:
-                    logging.warning(f"⚠️ Indeed found 0 valid jobs for: {keyword} (found {len(indeed_jobs)} total)")
-                
-            except Exception as e:
-                logging.error(f"Indeed search failed for {keyword}: {e}")
-        
-    except ImportError as e:
-        logging.warning(f"⚠️ Indeed scraper import failed: {e}")
-        logging.warning("Indeed scraper dependencies may be missing")
-    except Exception as e:
-        logging.error(f"❌ Indeed scraper failed: {e}")
-    
-    # API scraper (QUATERNARY SOURCE - only if we don't have many jobs) - FIXED IMPORT PATH
-    if len(all_new_jobs) < 15:  # Only use if we need more jobs
-        try:
-            from src.scrapers.jobs_api_scraper import JobsAPIScraper
-            api_scraper = JobsAPIScraper(delay=1)
-            scrapers_attempted += 1
-            logging.info("✅ Jobs API scraper imported and initialized successfully")
-            
-            for keyword in JOB_KEYWORDS[:1]:  # Just first keyword
-                logging.info(f"🔍 Searching API sources for: {keyword}")
-                try:
-                    api_jobs = api_scraper.search_jobs(
-                        keywords=keyword,
-                        location="Seattle, WA",
-                        max_jobs=5
-                    )
-                    
-                    new_jobs_count = 0
-                    for job in api_jobs:
-                        # Only add jobs with valid URLs
-                        if job.get('url') and job['url'].startswith('http'):
-                            if db_manager.add_job(job):
-                                new_jobs_count += 1
-                                all_new_jobs.append(job)
-                        else:
-                            logging.debug(f"Skipping API job without valid URL: {job.get('title', 'Unknown')}")
-                    
-                    if new_jobs_count > 0:
-                        logging.info(f"✅ Added {new_jobs_count} new API jobs for: {keyword}")
-                        scrapers_successful += 1
-                    else:
-                        logging.warning(f"⚠️ API sources found 0 valid jobs for: {keyword} (found {len(api_jobs)} total)")
-                    
-                except Exception as e:
-                    logging.error(f"API search failed for {keyword}: {e}")
-            
-        except ImportError as e:
-            logging.error(f"❌ Jobs API scraper import failed: {e}")
-            logging.error("Check if src/scrapers/jobs_api_scraper.py exists and has correct dependencies")
-        except Exception as e:
-            logging.error(f"❌ Jobs API scraper failed: {e}")
-    else:
-        logging.info(f"⏭️ Skipping API scraper - already found {len(all_new_jobs)} jobs")
+        logging.error(f"❌ Gmail scraper failed: {e}")
+        print(f"Error during job search: {e}")
+        return
     
     # Print summary
-    total_new_jobs = len(all_new_jobs)
     stats = db_manager.get_stats()
     total_jobs = stats.get('total_jobs', 0)
     
     print(f"\n{'='*60}")
-    print(f"JOB SEARCH SUMMARY v5.1")
+    print(f"JOB SEARCH SUMMARY v6.0 - Gmail LinkedIn Only")
     print(f"{'='*60}")
-    print(f"✅ New jobs found: {total_new_jobs}")
+    print(f"✅ New jobs found: {new_jobs_count}")
     print(f"📊 Total jobs in database: {total_jobs}")
-    print(f"🔧 Scrapers attempted: {scrapers_attempted}")
-    print(f"✅ Scrapers successful: {scrapers_successful}")
     
-    # Show stats by source
-    by_source = stats.get('by_source', {})
-    if by_source:
-        print(f"\n📋 Jobs by source:")
-        for source, count in by_source.items():
-            print(f"   {source}: {count}")
+    # Show stats by status
+    by_status = stats.get('by_status', {})
+    if by_status:
+        print(f"\n📋 Jobs by status:")
+        for status, count in by_status.items():
+            print(f"   {status}: {count}")
     
     # Show sample of new jobs
-    if all_new_jobs:
+    if new_jobs_count > 0:
         print(f"\n🎯 Sample of new jobs found:")
-        for i, job in enumerate(all_new_jobs[:5], 1):
+        # Get the most recent jobs
+        recent_jobs = db_manager.get_jobs(limit=5)
+        for i, job in enumerate(recent_jobs[:5], 1):
             salary_info = ""
             if job.get('salary_min') and job.get('salary_max'):
                 salary_info = f" (${job['salary_min']:,} - ${job['salary_max']:,})"
             elif job.get('salary_min'):
                 salary_info = f" (${job['salary_min']:,}+)"
             
-            url_indicator = "🔗" if job.get('url') else "❌"
-            print(f"{i}. {job['title']} at {job['company']}{salary_info} {url_indicator}")
-            print(f"   📍 {job['location']} | 🔗 {job.get('source', 'unknown')}")
+            print(f"{i}. {job['title']} at {job['company']}{salary_info}")
+            print(f"   📍 {job['location']} | Status: {job.get('status', 'new')}")
             print()
     
     print(f"\n💡 Next steps:")
-    print(f"   1. Review jobs: python ui/job_reviewer.py")
-    print(f"   2. Web interface: python api/web_api.py → http://localhost:5000")
-    print(f"   3. Clean database: python cleanup_jobs.py")
+    print(f"   1. Web interface: python api/web_api.py → http://localhost:5000")
+    print(f"   2. Check for new emails periodically")
     
-    if total_new_jobs == 0:
+    if new_jobs_count == 0:
         print(f"\n💭 No new jobs found. This could mean:")
         print(f"   • All recent jobs are already in your database")
-        print(f"   • Scrapers encountered issues (check logs above)")
-        print(f"   • No new jobs matching your criteria were posted")
-        
-        if scrapers_attempted == 0:
-            print(f"   • ⚠️ NO SCRAPERS WERE ATTEMPTED - check import errors above")
-        elif scrapers_successful == 0:
-            print(f"   • ⚠️ ALL SCRAPERS FAILED - check error messages above")
-    
-    # Enhanced diagnostics
-    print(f"\n🔧 Scraper Diagnostics:")
-    print(f"   • Gmail LinkedIn: {'✅ Working' if gmail_scraper else '❌ Failed'}")
-    print(f"   • SimplyHired: {'✅ Attempted' if scrapers_attempted > 0 else '❌ Import failed'}")
-    print(f"   • Indeed: {'⚠️ Attempted' if scrapers_attempted > 1 else '❌ Import failed'}")
-    print(f"   • API Sources: {'⚠️ Attempted' if scrapers_attempted > 2 else '❌ Import failed or skipped'}")
-    
-    logging.info("Optimized job search completed successfully")
-
-def test_scrapers():
-    """Test all scrapers individually to diagnose issues"""
-    print("🧪 Testing all job scrapers...")
-    
-    # Test imports
-    scrapers_to_test = [
-        ("Gmail LinkedIn", "scrapers.gmail_linkedin_scraper", "GmailLinkedInScraper"),
-        ("SimplyHired", "src.scrapers.simplyhired_scraper", "SimplyHiredScraper"),
-        ("Indeed", "src.scrapers.indeed_scraper", "IndeedScraper"),
-        ("Jobs API", "src.scrapers.jobs_api_scraper", "JobsAPIScraper"),
-    ]
-    
-    for name, module_path, class_name in scrapers_to_test:
-        try:
-            module = __import__(module_path, fromlist=[class_name])
-            scraper_class = getattr(module, class_name)
-            scraper = scraper_class()
-            print(f"✅ {name}: Import and initialization successful")
-        except ImportError as e:
-            print(f"❌ {name}: Import failed - {e}")
-        except Exception as e:
-            print(f"⚠️ {name}: Import OK but initialization failed - {e}")
+        print(f"   • No new LinkedIn job emails received")
+        print(f"   • Gmail token needs refresh (check error messages above)")
 
 def test_gmail_only():
     """Test only the Gmail scraper functionality"""
@@ -361,36 +187,8 @@ def setup_gmail_api():
 
 def test_database():
     """Test database functionality"""
-    print("🧪 Testing simplified database manager...")
+    print("🧪 Testing database manager...")
     db_manager = SimpleJobDatabaseManager(DATABASE_PATH)
-    
-    # Add a test job with URL
-    test_job = {
-        'job_id': 'test_quality_123',
-        'title': 'Senior Product Manager',
-        'company': 'Test Company',
-        'location': 'Seattle, WA',
-        'salary_min': 140000,
-        'salary_max': 160000,
-        'description': 'Test job description',
-        'source': 'test',
-        'url': 'https://example.com/job/123'  # Valid URL
-    }
-    
-    if db_manager.add_job(test_job):
-        print("✅ Successfully added test job with URL")
-    else:
-        print("ℹ️  Test job already exists (normal)")
-    
-    # Retrieve jobs
-    jobs = db_manager.get_jobs(limit=5)
-    print(f"✅ Retrieved {len(jobs)} jobs from database")
-    
-    if jobs:
-        print("\nSample job data:")
-        for job in jobs[:3]:
-            url_status = "🔗" if job.get('url') else "❌"
-            print(f"- {job['title']} at {job['company']} (Source: {job['source']}) {url_status}")
     
     # Show stats
     stats = db_manager.get_stats()
@@ -398,6 +196,7 @@ def test_database():
     print(f"   Total jobs: {stats.get('total_jobs', 0)}")
     print(f"   Recent jobs: {stats.get('recent_jobs', 0)}")
     print(f"   AI analyzed: {stats.get('ai_analyzed', 0)}")
+    print(f"   By status: {stats.get('by_status', {})}")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -406,19 +205,13 @@ if __name__ == "__main__":
             test_database()
         elif command == "gmail":
             test_gmail_only()
-        elif command == "scrapers":
-            test_scrapers()
         elif command == "setup":
             setup_gmail_api()
-        elif command == "clean":
-            print("To clean the database, run: python cleanup_jobs.py")
         else:
             print("Available commands:")
-            print("  python main.py          - Run optimized job search")
+            print("  python main.py          - Run Gmail LinkedIn job search")
             print("  python main.py test     - Test database")
             print("  python main.py gmail    - Test Gmail scraper only")
-            print("  python main.py scrapers - Test all scrapers")
             print("  python main.py setup    - Gmail API setup guide")
-            print("  python cleanup_jobs.py  - Clean database (remove test jobs, no URLs)")
     else:
         main()

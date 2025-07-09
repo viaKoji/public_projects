@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""Fix or archive old jobs with parsing issues"""
+
+import sqlite3
+
+def fix_old_jobs():
+    conn = sqlite3.connect('data/jobs.db')
+    cursor = conn.cursor()
+    
+    # Count affected jobs
+    cursor.execute("""
+        SELECT COUNT(*) FROM jobs 
+        WHERE LOWER(company) IN ('united states', 'usa', 'us', 'canada', 'uk', 'united kingdom', 
+                                 'remote', 'hybrid', 'onsite', 'on-site')
+    """)
+    total_affected = cursor.fetchone()[0]
+    
+    print(f"Found {total_affected} jobs with location as company name\n")
+    
+    if total_affected == 0:
+        print("No jobs to fix!")
+        return
+    
+    print("Choose an action:")
+    print("1. Set company to 'Unknown Company' and move location to correct field")
+    print("2. Archive these jobs (set status='archived')")
+    print("3. Delete these jobs permanently")
+    print("4. Cancel")
+    
+    choice = input("\nEnter choice (1-4): ")
+    
+    if choice == '1':
+        # Fix by setting proper company/location
+        cursor.execute("""
+            UPDATE jobs 
+            SET location = company, 
+                company = 'Unknown Company'
+            WHERE LOWER(company) IN ('united states', 'usa', 'us', 'canada', 'uk', 'united kingdom', 
+                                     'remote', 'hybrid', 'onsite', 'on-site')
+            AND (location IS NULL OR location = '' OR location = 'Unknown Location' OR location = 'Location Not Specified')
+        """)
+        
+        # For jobs that already have a location, just fix the company
+        cursor.execute("""
+            UPDATE jobs 
+            SET company = 'Unknown Company'
+            WHERE LOWER(company) IN ('united states', 'usa', 'us', 'canada', 'uk', 'united kingdom', 
+                                     'remote', 'hybrid', 'onsite', 'on-site')
+            AND location IS NOT NULL 
+            AND location != '' 
+            AND location != 'Unknown Location' 
+            AND location != 'Location Not Specified'
+        """)
+        
+        conn.commit()
+        print(f"✅ Fixed {cursor.rowcount} jobs - set company to 'Unknown Company'")
+        
+    elif choice == '2':
+        # Archive them
+        cursor.execute("""
+            UPDATE jobs 
+            SET status = 'archived'
+            WHERE LOWER(company) IN ('united states', 'usa', 'us', 'canada', 'uk', 'united kingdom', 
+                                     'remote', 'hybrid', 'onsite', 'on-site')
+        """)
+        conn.commit()
+        print(f"✅ Archived {cursor.rowcount} jobs")
+        
+    elif choice == '3':
+        # Delete them
+        confirm = input("Are you sure you want to DELETE these jobs? Type 'yes' to confirm: ")
+        if confirm.lower() == 'yes':
+            cursor.execute("""
+                DELETE FROM jobs 
+                WHERE LOWER(company) IN ('united states', 'usa', 'us', 'canada', 'uk', 'united kingdom', 
+                                         'remote', 'hybrid', 'onsite', 'on-site')
+            """)
+            conn.commit()
+            print(f"✅ Deleted {cursor.rowcount} jobs")
+        else:
+            print("Deletion cancelled")
+    
+    else:
+        print("Cancelled - no changes made")
+    
+    # Show summary
+    print("\n=== CURRENT DATABASE STATUS ===")
+    cursor.execute("SELECT COUNT(*) FROM jobs WHERE status != 'archived'")
+    active_jobs = cursor.fetchone()[0]
+    
+    cursor.execute("""
+        SELECT COUNT(*) FROM jobs 
+        WHERE LOWER(company) IN ('united states', 'usa', 'us', 'canada', 'uk', 'united kingdom', 
+                                 'remote', 'hybrid', 'onsite', 'on-site')
+        AND status != 'archived'
+    """)
+    still_bad = cursor.fetchone()[0]
+    
+    print(f"Active jobs: {active_jobs}")
+    print(f"Active jobs with location as company: {still_bad}")
+    
+    conn.close()
+
+if __name__ == "__main__":
+    # First check what we're dealing with
+    import subprocess
+    subprocess.run([sys.executable, "check_old_bad_jobs.py"])
+    
+    print("\n" + "="*50 + "\n")
+    fix_old_jobs()

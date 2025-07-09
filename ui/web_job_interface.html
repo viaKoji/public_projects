@@ -1891,7 +1891,7 @@ Changes in v3.0:
                             </ul>
                         </div>
                     ` : ''}
-                    ${job.ai_analysis.potential_concerns ? `
+                    ${job.ai_analysis && job.ai_analysis.potential_concerns && Array.isArray(job.ai_analysis.potential_concerns) && job.ai_analysis.potential_concerns.length > 0 ? `
                         <div style="margin-top: 10px;">
                             <strong>⚠️ Potential Concerns:</strong>
                             <ul style="margin: 5px 0 0 20px;">
